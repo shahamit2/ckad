@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ambassadorpod
+spec:
+  containers:
+  - name: main
+    image: amitshah/main
+    imagePullPolicy: IfNotPresent
+    command: ["/bin/sh"]
+    args: ["-c","sleep 20; while true; do curl -XGET http://localhost:6000 >> /var/output.txt; sleep 120; done"]
+  - name: proxy
+    image: amitshah/proxy
+    imagePullPolicy: IfNotPresent

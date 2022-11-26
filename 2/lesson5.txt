@@ -1,0 +1,66 @@
+Index: -
+1. Objective
+2. Recap Docker Entrypoint and CMD
+3. Build Image
+4. About Command and Args
+5. Command and Args : Hands-on : 1
+6. Command and Args : Hands-on : 2
+7. Command and Args : Hands-on : 3
+
+******************************************************
+1. Objective
+- Learn how to override start process and arguments of docker image.
+
+******************************************************
+2. Recap Docker Entrypoint and CMD
+- CMD and ENTRYPOINT both can start process.
+- CMD
+  - Override allowed with docker run.
+  - CMD can also go as arguments with ENTRYPOINT.
+    - Value of CMD can be passed with docker run.
+- ENTRYPOINT
+  - Override not allowed with docker run.
+
+******************************************************
+3. Build Image
+- Build quote image to explore command and args in k8s.
+- Review file codebase/images/quote/Dockerfile
+- Run below commands
+  - Docker build . -t amitshah/quote
+  - Docker push amitshah/quote
+
+******************************************************
+4. Command and Args
+- Command
+  - Command field is in pod.container definition.
+  - It can override ENTRYPOINT command of docker.
+- Args
+  - Args field is also in pod.container definition
+  - It can override CMD command of docker.
+
+******************************************************
+5. Command and Args : Hands-on : 1
+- Use image amitshah/quote which has ENTRYPOINT + CMD present.
+- Run asis
+vagrant ssh kbs1
+kubectl run quote --image=amitshah/quote
+kubectl logs quote
+
+******************************************************
+6. Command and Args : Hands-on : 2
+- Example for Overriding quote in amitshah/quote image.
+- Review file codebase/pod/quoteargs.yaml.
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/quoteargs.yaml
+kubectl logs quoteargs
+
+
+******************************************************
+7. Command and Args : Hands-on : 3
+- Example for Overriding ENTRYPOINT and ARGS in amitshah/quote image.
+- Review file codebase/pod/quoteentry.yaml.
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/quoteentry.yaml
+kubectl exec -it quoteentry -- /bin/sh
+
+

@@ -1,0 +1,194 @@
+Index: -
+1. Objective
+2. Aside - DNS
+3. About NodePort serivce
+4. NodePort : Hands-on
+5. Aside - GKE Cluster
+6. About LoadBalancer serivce
+7. LoadBalancer : Hands-on
+8. About External service
+9. External service : Hands-on
+10. About Headless service
+11. Headless service : Hands-on
+
+******************************************************
+1. Objective
+- Learn to use k8s services - Part 2
+
+******************************************************
+2. Aside - DNS
+- DNS utility contianer comes with helpful DNS commands.
+- Review file codebase/pod/dnsutils.yaml
+- Pod "dnsutils" is going to be used as required.
+- Run below command to spin up cotainer.
+vagrant ssh kbs1
+cd codebase/pod
+kubectl apply -f dnsutils.yaml
+
+******************************************************
+3. About NodePort serivce
+- Service to provide access to outside world.
+- Port Range: 30000-32768
+- Auto + Custom
+  - Auto: When port is not specified then randomly picked up.
+  - Custom: Port can be specified.
+    - nodePort: 30201
+- Flow
+  - Enduser -> NodeIP:Port -> ServiceIP:Port -> PodIP:Container-Port
+
+******************************************************
+4. NodePort : Hands-on
+
+- Run below command to spinup deployment/pod and get yaml of service
+vagrant ssh kbs1
+kubectl apply -f codebase/deployment/world.yaml
+# Crete YAML for nodeport
+kubectl create service nodeport npworld \
+  --tcp=6001:4001 \
+  --dry-run=client \
+  -o yaml > npworld.yaml
+
+- Review npworld.yaml
+  - Modify selector to point to exact Pod i.e. app: world
+
+- Create service
+kubectl apply -f npworld.yaml
+
+- Run below commands and observe outupt
+kubectl get pods -o wide
+kubectl get nodes -o wide
+kubectl get svc
+
+- Run below command from your laptop terminal
+curl -XGET http://<node-ip>:<node-port>
+curl -XGET http://172.16.1.6:32343
+
+- How it works?
+  - NodeIP:NodePort -> ServiceIP:ServicePort -> PodIP:ContainerPort
+  - 172.16.1.6:32343 -> 10.106.229.61:6001 -> 10.47.0.1:4001
+
+******************************************************
+5. Aside - GKE Cluster
+- Run below command to launch cluster
+gcloud beta container --project "learngcp-020678" clusters create "k8s-cluster1" --zone "us-west2-a" --no-enable-basic-auth --cluster-version "1.20.10-gke.301" --release-channel "regular" --machine-type "e2-medium" --image-type "COS_CONTAINERD" --disk-type "pd-standard" --disk-size "100" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" --max-pods-per-node "110" --num-nodes "3" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM --enable-ip-alias --network "projects/learngcp-020678/global/networks/vpc-k8s" --subnetwork "projects/learngcp-020678/regions/us-west2/subnetworks/sn1-uw2-k8s" --no-enable-intra-node-visibility --default-max-pods-per-node "110" --no-enable-master-authorized-networks --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --enable-shielded-nodes --node-locations "us-west2-a"
+
+- List cluster
+gcloud container clusters list
+
+- Update .kube/config to access cloud cluster
+gcloud container clusters get-credentials k8s-cluster1 --zone us-west2-a --project learngcp-020678
+
+******************************************************
+6. About LoadBalancer serivce
+- K8S service of LoadBalancer is tied with various cloud provider.
+  - e.g.: EKS, GKE,
+- LoadBalancer is created in Cloud.
+- Flow
+  - Enduser -> LBIP:Port -> NodeIP:Port -> ServiceIP:Port -> PodIP:Container-Port
+
+******************************************************
+7. LoadBalancer : Hands-on
+
+- Run below command to spinup deployment/pod and get yaml of service
+cd codebase/deployment
+kubectl apply -f world.yaml
+# Crete YAML for loadbalancer
+kubectl create service loadbalancer lbworld \
+  --tcp=7001:4001 \
+  --dry-run=client \
+  -o yaml > lbworld.yaml
+
+- Review lbworld.yaml
+  - Modify selector to point to exact Pod i.e. app: world
+
+- Create load balancer
+kubectl apply -f lbworld.yaml
+
+- Run below commands to note details of name, ip and port
+kubectl get pods -o wide
+kubectl get nodes -o wide
+kubectl get svc
+
+- Run below command from your laptop terminal
+curl -XGET http://<loadbalancer-ip>:<lb-port>
+curl -XGET http://35.236.9.31:7001
+
+- How it works?
+  - 35.236.9.31:7001 -> 34.102.57.59:30972 -> 10.128.11.135:7001 -> 10.124.0.12:4001
+  - loadbalIP:port -> nodeIP:port -> svcIP:port -> podIP:containerPort
+
+******************************************************
+8. About External service
+- Service outside of cluster or namespace is external.
+- External service is a way to access those service as internal.
+- Flow
+  - Enduser -> ServiceIP:Port -> ExternalIP:Port
+
+
+******************************************************
+9. External service : Hands-on
+- Access GKE loadbalancer from laptop's 3 node cluster.
+- Review external service file
+  - codebase/service/extworld.yaml
+
+- Create external service
+vagrant ssh kbs1
+cd codebase/service
+kubectl apply -f extworld.yaml
+
+- Run below command
+kubectl get svc
+curl -XGET <cluster-ip>:7001
+
+-> Delete Google cloud cluster
+gcloud container clusters list
+gcloud container clusters delete k8s-cluster1
+
+******************************************************
+10. About Headless service
+- Problem statement
+  - Loadbalancing and proxy is not required.
+  - Pod1 wants communicates to Pod2 directly
+  - What if Pod2 dies
+    - Communication should not break
+- Solution
+  - Headless service
+- Flow
+  - Pod2 -> ServiceName:ContainerPort -> <Pod1>IP:ContainerPort
+
+******************************************************
+11. Headless service : Hands-on
+
+- Do deployment with below commands.
+vagrant ssh kbs1
+cd codebase
+kubectl apply -f codebase/deployment/headworld.yaml
+kubectl apply -f codebase/service/headless.yaml
+kubectl get pods
+kubectl get svc
+
+- Go inside dnsutils pod
+kubectl exec -it dnsutils -- /bin/sh
+# nslookup hworld
+# nslookup ciworld
+# curl -XGET ciworld:5001
+# curl -XGET hworld:4001
+
+- ^ Observe difference of nslookup of hworld and ciworld.
+- ^ Understand why same port in case of headless service?
+
+- Delete Pod and see if service of hworld still works.
+kubectl get pods -o wide
+kubectl delete pod hworld-<>
+kubectl exec -it dnsutils -- /bin/sh
+# nslookup hworld
+
+******************************************************
+Pending: expose
+kubectl run world --image=world --generator=run-pod/v1 --image-pull-policy=IfNotPresent --expose --port=4001
+kubectl run heaven --image=heaven --generator=run-pod/v1 --image-pull-policy=IfNotPresent --port=4002 --expose
+kubectl run hell --image=hell --generator=run-pod/v1 --image-pull-policy=IfNotPresent --port=4003 --expose
+
+kubectl exec heaven -- curl -s http://world:4001/
+kubectl exec hell -- curl -s http://heaven:4002/heaven
+kubectl exec heaven -- curl -s http://hell:4003/hell

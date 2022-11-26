@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: myvolclaim1
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeName: myvol
+  resources:
+    requests:
+      storage: 4Gi

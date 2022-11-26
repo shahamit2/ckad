@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bbjob
+spec:
+  activeDeadlineSeconds: 30
+  completions: 4
+  parallelism: 2
+  template:
+    metadata:
+    spec:
+      containers:
+      - image: busybox
+        name: bbjob
+        command:
+        - "echo"
+        args:
+        - "Hello Job"
+      restartPolicy: Never

@@ -1,0 +1,252 @@
+Index: -
+1. Objective
+2. Folders - kbs1
+3. Build docker images of tiny webapps
+4. Problem statement
+5. About Services
+6. About ClusterIP
+7. ClusterIP - 1
+8. ClusterIP - 2
+9. ClusterIP - 3
+10. Aside - DNS
+11. Environment variables
+12. Accessing URL with service name
+13. Portname
+14. Multiple port service
+15. Cleanup
+
+******************************************************
+1. Objective
+- Learn to use k8s services - Part 1
+
+******************************************************
+2. Folders - kbs1
+- Run below commands
+vagrant ssh kbs1
+sudo apt-get install tree
+mkdir -p codebase/pod codebase/deployment codebase/service
+tree codebase
+- Save all your yaml inside codebase directory.
+
+******************************************************
+3. Build docker images of tiny webapps
+- Review webapp code and Dockerfile
+  - Dir: codebase/images/
+
+- Build docker image
+cd codebase/images/world
+docker build . -t amitshah/world
+cd codebase/images/heaven
+docker build . -t amitshah/heaven
+cd codebase/images/hell
+docker build . -t amitshah/hell
+
+- Push docker image
+docker push amitshah/world
+docker push amitshah/heaven
+docker push amitshah/hell
+
+******************************************************
+4. Problem statement
+- Run below command
+vagrant ssh kbs1
+cd codebase/deployment
+
+- Store YAML for pod world
+kubectl create deployment world --image=amitshah/world --dry-run=client -o yaml > world.yaml
+
+- Create Pod
+kubectl apply -f world.yaml
+kubectl get pods -o wide
+
+- Try accessing service from inside pod.
+kubectl exec world -it -- curl -XGET http://localhost:4001
+- SUCCESSFUL: ^working.
+
+- Note IP of Pod and then try to access.
+kubectl get pods -o wide
+curl -XGET http://10.44.0.1:4001
+- SUCCESSFUL: ^working.
+
+- Delete Pod -- Failure scenario
+kubectl delete pod world-6c465ffc86-vjr4t
+
+- List pods after delete
+kubectl get pods -o wide
+- ^ New pod is running with new IP.
+- Conclusion: IP is not static
+
+- Problem statement
+  - How to access container inside pod outside cluster?
+  - How pods can access each other's containers without PodIP?
+    - PodIP is ephemeral hence can get change any time.
+- Solution
+  - Services comes to rescue.
+
+******************************************************
+5. About Services
+- There are several types of services.
+    - Ingress, External, Internal
+- Internal
+  - Internal accessible within cluster.
+- External
+  - External accessible from outside cluster.
+- Ingress
+  - Provide functionality of
+    - Domain-name/path base URL
+    - SSL termination
+    - Load balancing
+- At core creates internal service with static IP for any kind of service.
+
+
+******************************************************
+6. About ClusterIP
+- ClusterIP is service accessible inside cluster ONLY.
+  - Example: database service is internal type of service.
+- Works as proxy and load balancer.
+- Flow
+  - Enduser -> ServiceIP:Port -> PodIP:Container-Port
+
+******************************************************
+7. ClusterIP - 1
+- Run below command to deploy world app.
+vagrant ssh kbs1
+cd codebase/deployment
+kubectl apply -f world.yaml
+
+- Start with help
+kubectl create service -h
+kubectl explain service
+kubectl explain service --recursive
+
+- Generate YAML file.
+cd codebase/service
+kubectl create service clusterip ciworld \
+  --tcp=5001:4001 \
+  --dry-run=client \
+  -o yaml > ciworld.yaml
+
+- Excerpt from ciworld.yaml
+####
+spec:
+  ports:
+  - name: 5001-4001
+    port: 5001
+    protocol: TCP
+    targetPort: 4001
+  selector:
+    run: world
+  type: ClusterIP
+####
+- "type" is type of service.
+- "targetPort" is container Port
+- "port" is service port.
+- "selector" decides which pod service is going to poin to.
+
+******************************************************
+8. ClusterIP - 2
+- Run below command to create service
+cd codebase/service
+kubectl apply -f ciworld.yaml
+kubectl get svc
+
+- Access webapp from any node of cluster using clusterip:port
+curl -XGET http://10.102.92.254:5001
+- ^still not accessible why?
+  - due to wrong "selector"
+
+******************************************************
+9. ClusterIP - 3
+
+- Delete service
+kubectl delete -f ciworld.yaml
+kubectl describe pod world-<>-<>
+- ^Not label
+
+- Modify ciworld.yaml for right selector
+vi ciworld.yaml
+
+- Run below command
+kubectl apply -f ciworld.yaml
+kubectl describe svc ciworld
+- ^ Review the endpoint
+
+- Access webapp from any node within cluster
+kubectl get svc
+curl -XGET http://10.109.101.116:5001
+
+******************************************************
+10. Aside - DNS
+- DNS utility contianer comes with helpful DNS commands.
+- Review file codebase/pod/dnsutils.yaml
+- Pod "dnsutils" is going to be used as required.
+- Run below command to spin up cotainer.
+vagrant ssh kbs1
+cd codebase/pod
+kubectl apply -f dnsutils.yaml
+
+******************************************************
+11. Environment variables
+- K8S injects services info in form of env variables inside pod/container.
+- Run below commands to update container inside dnsutils pod.
+vagrant ssh kbs1
+kubectl exec -it dnsutils -- /bin/sh
+apk update
+apk add curl
+# Grep env variables related to services
+env | grep CIWORLD
+# Curl URL using env variables inside Pod/contianer
+# curl -XGET http://${CIWORLD_SERVICE_HOST}:${CIWORLD_SERVICE_PORT_5001_4001}/
+
+******************************************************
+12. Accessing URL with service name
+- Run below commands to update container inside dnsutils pod.
+- nslookup ciworld
+vagrant ssh kbs1
+kubectl exec -it dnsutils -- /bin/sh
+# cat /etc/resolv.conf
+# curl -s http://ciworld:5001
+# curl -s http://ciworld.default:5001
+# curl -s http://ciworld.default.svc.cluster.local:5001
+
+- Format of DNS service name
+  - <servicename>.<namespace>.svc.cluster.local
+
+******************************************************
+13. Portname
+- Service definition has port mapping.
+  - service port --- container port
+- Scenario
+  - Service is created on top of pod.
+  - Pod is redployed.
+  - Container inside pod has now changed port.
+    - e.g.: container listening on port 80 now listens on 81.
+  - If service is mapped with port number then it's not useful anymore.
+- Solution
+  - Portname comes to rescue.
+- Review files
+  - codebase/pod/kubia.yaml
+  - codebase/service/skubia.yaml
+
+******************************************************
+14. Multiple ports service
+- One clusterIP service can proxy multiple ports.
+- Files related kubia is already discussed.
+- Example below is self explanatory.
+- Run below commands.
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/kubia.yaml
+kubectl apply -f codebase/service/skubia.yaml
+kubectl get svc
+curl -XGET <svcIP>:port1
+curl -XGET <svcIP>:port2
+
+******************************************************
+15. Cleanup
+- Run below command.
+vagrant ssh kbs1
+kubectl delete all --all -n default
+
+******************************************************
+Pending: sessionAffinity
+

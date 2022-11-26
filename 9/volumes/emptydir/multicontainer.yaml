@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bb
+  name: bb
+spec:
+  volumes:
+   - name: data
+     emptyDir: {}
+  containers:
+  - volumeMounts:
+    - name: data
+      mountPath: /etc/test
+    command:
+    - sleep
+    - "3600"
+    image: busybox
+    name: bb1
+  - volumeMounts:
+    - name: data
+      mountPath: /etc/test
+    command:
+    - sleep
+    - "3600"
+    image: busybox
+    name: bb2
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never

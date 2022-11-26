@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: bbpvc
+  name: bbpvc
+spec:
+  containers:
+  - command:
+    - sleep
+    - "3600"
+    image: busybox
+    name: busybox
+    volumeMounts:
+    - name: test
+      mountPath: /etc/test
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+  volumes:
+   - name: test
+     persistentVolumeClaim:
+      claimName: myvolclaim1

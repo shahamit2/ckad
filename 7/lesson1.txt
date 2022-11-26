@@ -1,0 +1,262 @@
+Index: -
+1. Objective
+2. Aside - Inject environment variables to Pod
+3. About ConfigMap
+4. ConfigMap Types
+5. ConfigMap :: literal  :: create
+6. ConfigMap :: env-file :: create
+7. ConfigMap :: from-file - 1 :: create
+8. ConfigMap :: from-file - 2 :: create
+9. ConfigMap :: from-file - 3 :: create
+10. ConfigMap Summary
+11. Inject ConfigMap to Pod environment vars
+12. Inject CM to Pod.env - valueFrom
+13. Inject CM to Pod.env - envFrom
+14. Update of CM not reflected in pod.env
+15. About CM volume
+16. Inject CM as volume to Pod
+17. Update CM
+18. Conclusion
+
+
+******************************************************
+1. Objective
+- Learn about API object ConfigMap.
+
+******************************************************
+2. Aside - Inject environment variables to Pod
+- Earlier observed env vars of services inside Pod.
+- Below is a way to insert N number of env vars to Pod imperatively.
+kubectl run nginx --image=nginx \
+  --env=dbhost=localhost --env=dbport=3306
+kubectl exec nginx -- env | grep db
+
+******************************************************
+3. About ConfigMap
+- Non confidential data in key-value pairs
+- Decouples environment specific config from image
+  - DB-URL for test, stage and prod environment.
+- Inject config inside pod using
+  - Env variables
+  - Command line arguments
+  - Volume
+
+******************************************************
+4. ConfigMap Types
+- Several ways to create ConfigMap.
+- Important to note that each way creates key-value pair differently.
+- Next few sections are example of configmap.
+- Please observe "Keys" and "Values" of each section for better understanding.
+
+******************************************************
+5. ConfigMap :: literal  :: create
+- Create configmap using literal values
+- Run below commands
+kubectl create configmap dbconfig1 \
+    --from-literal=dbhost=localhost \
+    --from-literal=dbport=3306
+kubectl describe cm dbconfig1
+kubectl get cm dbconfig1
+
+- Understand how key, values are created.
+  - Keys: dbhost, dbport
+  - Values: localhost, 3306
+
+
+******************************************************
+6. ConfigMap :: env-file :: create
+- Create configmap using "env-file".
+- Run below commands
+kubectl create configmap dbconfig2 --from-env-file=envs/dbprop.env
+kubectl describe cm dbconfig2
+
+- Understand how key, values are created.
+  - Keys: dbhost, dbport
+  - Values: localhost, 3306
+
+
+******************************************************
+7. ConfigMap :: from-file - 1 :: create
+- Create configmap using "from-file".
+- Run below commands
+kubectl create configmap dbconfig3 --from-file=configs/primary_db.conf
+kubectl describe cm dbconfig3
+
+- Understand how key, values are created.
+  - Keys: primary_db.conf
+  - Values: -
+    host=primary
+    port=3306
+
+- Important Note: Here host and port are not keys, but part of values.
+
+******************************************************
+8. ConfigMap :: from-file - 2 :: create
+- Create configmap using "from-file".
+- Run below commands
+kubectl create configmap dbconfig4 --from-file=primary=configs/primary_db.conf
+kubectl describe cm dbconfig4
+
+- Understand how key, values are created.
+  - Keys: primary
+  - Values: -
+    host=primary
+    port=3306
+
+- Important Note: Here host and port are not keys, but part of values.
+
+******************************************************
+9. ConfigMap :: from-file - 3 :: create
+- Create configmap using "from-file".
+- Run below commands
+kubectl create configmap dbconfig5 --from-file=configs/
+kubectl describe cm dbconfig5
+
+- Understand how key, values are created.
+  - Keys: primary_db.conf, secondary_db.conf
+  - Values: -
+    host=primary
+    port=3306
+    host=standby
+    port=3306
+
+- Important Note: Here host and port are not keys, but part of values.
+
+******************************************************
+10. ConfigMap Summary
+- So far 5 configmaps are created.
+  - dbconfig1
+    - from literal
+  - dbconfig2
+    - from envfile
+  - dbconfig3
+    - from file
+    - Key is filename.
+    - Value is content of file.
+  - dbconfig4
+    - from file
+    - Customized key.
+    - Value is content of file.
+  - dbconfig5
+    - from folder/<all files>
+    - Keys are filenames.
+    - Values are content of file for respective key.
+
+******************************************************
+11. Inject ConfigMap to Pod environment vars
+- CM can be injected to pod.env with below constructs.
+  - valueFrom
+  - envFrom
+
+******************************************************
+12. Inject CM to Pod.env - valueFrom
+- Generate  Pod definition with env variables.
+- Run below command
+kubectl run nginx1 --image=nginx --env=dbhost=val1 \
+  -o yaml --dry-run=client > codebase/pod/nginx1.yaml
+
+- File codebase/pod/nginx1.yaml
+  - Current section
+    - env:
+      - name: dbhost
+        value: val1
+  - Replace section as below
+    - env:
+      - name: dbhost
+        valueFrom:
+          configMapKeyRef:
+            name: dbconfig1
+            key: dbhost
+
+- Replace dbhost and add dbport to nginx1.yaml
+- Run below commands
+kubectl apply -f codebase/pod/nginx1.yaml
+kubectl exec nginx1 -- env | grep db
+
+Note:
+- dbconfig1 == dbconfig2
+  - Both key-value pairs are same of configmap
+- Not repeating exercise
+
+******************************************************
+13. Inject CM to Pod.env - envFrom
+
+- File: codebase/pod/nginx3env.yaml
+  - See section envFrom
+    envFrom:
+    - configMapRef:
+        name: dbconfig3
+
+- Run below commands
+kubectl apply -f codebase/pod/nginx3env.yaml
+kubectl exec nginx3env -- env | grep -a1 primary_db
+
+******************************************************
+14. Update of CM not reflected in pod.env
+- Update dbconfig1
+  - Change dbport from 3306 to 3307
+- Run  below command
+kubectl edit configmap dbconfig1
+kubectl exec nginx1 -- env | grep db
+- ^ Change of config not reflected inside pod.
+
+- Update dbconfig3
+  - Change dbport from 3306 to 3307
+- Run  below command
+kubectl edit configmap dbconfig3
+kubectl exec nginx3env -- env | grep -a1 primary_db
+- ^ Change of config not reflected inside pod.
+
+- Conclusion: Recreate Pod to see update of configmap.
+
+******************************************************
+15. About CM volume
+- CM can be added to Pod using volume.
+- Below is syntaxt to be used in *.yaml for adding volumes.
+- container.volumeMounts
+volumeMounts:
+  - name: myvol
+    mountPath: /etc/config
+- spec.volumes
+volumes:
+ - name: myvol
+   configMap:
+     name: dbconfig3
+- Please note that volumes.name === volumeMounts.name
+  - Name equality is key for mapping config to file system.
+
+******************************************************
+16. Inject CM as volume to Pod
+- Create 3 Pods injetcing config as volumes
+  - Respectively for each pod one config i.e. dbconfig3, 4 and 5.
+
+- Run below commands - dbconfig3
+kubectl apply -f codebase/pod/nginx3vol.yaml
+kubectl exec nginx3vol -- cat /etc/config/primary_db.conf
+
+- Run below commands - dbconfig4
+kubectl apply -f codebase/pod/nginx4vol.yaml
+kubectl exec nginx4vol -- cat /etc/config/primary
+
+- Run below commands - dbconfig5
+kubectl apply -f codebase/pod/nginx5vol.yaml
+kubectl exec nginx5vol -- ls /etc/config
+
+******************************************************
+17. Update CM
+- Update dbconfig3
+  - Change dbport from 3307 to 3308
+- Run  below command
+kubectl edit configmap dbconfig3
+kubectl exec nginx3vol -- cat /etc/config/primary_db.conf
+- ^ Change of config is reflected inside pod.
+
+Conclusion: Change in configmap is reflected with volumes.
+
+******************************************************
+18. Conclusion
+- Way to go for injecting configmap to Pod is volume.
+  - Why?
+    - Changes in the configmap are reflected in Pod.
+  - In production/staging/dev/test env any configuration change
+    of any type can easily be injected inside Application.

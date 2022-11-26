@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: quoteentry
+  namespace: default
+  labels:
+    app: quoteentry
+spec:
+  containers:
+  - name: quote
+    image: amitshah/quote
+    command:
+    - "sleep"
+    args:
+    - "360"

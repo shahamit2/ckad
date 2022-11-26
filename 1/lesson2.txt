@@ -1,0 +1,68 @@
+Index: -
+1. Objective
+2. Getting started with kubectl
+3. Cluster access
+4. API Resources
+
+******************************************************
+1. Objective
+  - Familiarize with kubectl
+
+******************************************************
+2. Getting started with kubectl
+- Version info
+kubectl version
+kubectl version --short
+
+- Autocomplete for Ubuntu
+sudo apt-get install bash-completion
+source <(kubectl completion bash)
+echo "source <(kubectl completion bash)" >> ~/.bashrc
+# logout/login and try with next command
+
+- Press tab to see further options.
+kubectl <press tab>
+kubectl create <press tab>
+kubectl create role --<press tab>
+
+- Command help
+kubectl -h
+
+- Sub-command help
+kubectl run -h
+kubectl create -h
+
+- Get detail of object
+kubectl explain deployment
+
+******************************************************
+3. Cluster access
+- Cluster authentication information is saved in
+  - File: .kube/config
+
+- List all clusters info added in .kube/config
+kubectl config get-contexts
+
+- List active cluster
+kubectl config current-context
+
+- Set another cluster as active cluster
+kubectl config set-context minitest --cluster=minikube --namespace=test
+kubectl config set-context --current
+kubectl config set-context $(kubectl config current-context) --namespace=test
+
+******************************************************
+4. API Resources
+- K8S API supports two type of resources.
+  - API resource that belongs to namespace.
+  - API resource that does not belongs to namespace.
+
+- Resources that does not belongs to namespace
+kubectl api-resources --namespaced=false
+- ^ e.g.: Persistence volume
+
+- Resources that belongs to namespace
+kubectl api-resources --namespaced=true
+- ^ e.g.: Pod
+
+******************************************************

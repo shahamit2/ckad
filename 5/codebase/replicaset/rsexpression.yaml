@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: rsexpression
+  name: rsexpression
+spec:
+  replicas: 2
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+        - rsexpression
+  template:
+    metadata:
+      labels:
+        app: rsexpression
+    spec:
+      containers:
+      - image: nginx:1.7.1
+        name: nginx

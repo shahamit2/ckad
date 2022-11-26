@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: headworld
+  name: headworld
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: headworld
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: headworld
+    spec:
+      containers:
+      - image: amitshah/world
+        name: world
+        resources: {}

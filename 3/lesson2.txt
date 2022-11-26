@@ -1,0 +1,64 @@
+Index: -
+1. Objective
+2. About Monitoring
+3. About Metrics Server
+4. Metrics Server Deployment
+5. Get Metrics
+
+******************************************************
+1. Objective
+- Learn about monitoring solution.
+
+******************************************************
+2. About Monitoring
+- Monitoring helps with
+  - How many nodes are healthy?
+  - How much resources are consumed on nodes?
+  - How much resources are consumed by pods?
+- K8S does not come with Monitoring solution.
+- Several solutions available in market.
+  - Elastics Stack
+  - Datadog
+  - Prometheus
+  - Dynatrace
+  - Metrics Server
+
+
+******************************************************
+3. About Metrics Server
+- Limited feature solution
+- In memory solution
+  - Does not store metrics on disk
+  - Historical performance data not available
+- Architecture
+  - Kubelet has sub component cAdvisor
+    - cAdvisor
+      - Responsible for retrieving performance metrics from nodes and pods
+      - Make them available to metrics server
+
+- Note
+  - CKAD exam has minimal implemented solution.
+
+******************************************************
+4. Metrics Server Deployment
+- Below URL provides instructions to implement.
+  - https://github.com/kubernetes-sigs/metrics-server
+
+- Run below commands to install metrics server
+vagrant ssh kbs1
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+- Run below command to disable TLS.
+kubectl edit deployments.app -n kube-system metrics-server
+# Add below line in containers.args section
+- --kubelet-insecure-tls
+# ^ Add line after "- --kubelet-use-node-status-port"
+
+- Run command to observe metrics-server Pods are up and running.
+kubectl get pods -n kube-system
+
+******************************************************
+5. Get Metrics
+- Run below commands to get metrics for Nodes and Pods
+kubectl top nodes
+kubectl top pods

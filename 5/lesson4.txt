@@ -1,0 +1,180 @@
+Index: -
+1. Objective
+2. Taint and toleration
+3. Taint effects
+4. Taint : Hands-on
+5. Pod without Toleration
+6. Pod with Toleration
+7. Node Selector
+8. Node Affinity
+9. Properties of Node Affinity
+10. Node Affinity : Hands-on
+11. Security Context
+12. Security Context : Hands-on
+
+
+******************************************************
+1. Objective
+- Below topics are covered.
+  - Taint and Toleration
+  - Node Affinity
+  - Security Context
+
+******************************************************
+2. Taint and toleration
+- Helps to ensure that pods are not scheduled onto inappropriate nodes.
+- One or more taints are applied to a node.
+- Node won't accept pod that do not tolerate taints.
+
+- Note
+  - Taint and toleration makes sure that Pods are not scheduled on specific nodes.
+  - But they do not ensure that Pods are scheduled on specific nodes.
+
+******************************************************
+3. Taint effects
+- Node can be tainted with different type of effects.
+- Effects
+  - NoExecute
+    - Evicts existing pods on node and no new allowed.
+  - PreferNoSchedule
+    - Just preference but still scheduling possible
+  - NoSchedule
+    - Scheduling not allowed
+
+******************************************************
+4. Taint : Hands-on
+- Below is example of different taints on Node "kbs3".
+kubectl taint nodes kbs3 alpine=pod:NoSchedule
+kubectl describe nodes kbs3 | grep -a4 Taints
+
+
+******************************************************
+5. Pod without Toleration
+- Review file codebase/pod/notolerate1.yaml
+- Run below commands
+kubectl apply -f codebase/pod/notolerate1.yaml
+kubectl get pods -o wide
+# ^ Pod must be scheduled on kbs2
+
+******************************************************
+6. Pod with Toleration
+- Add one more toleration on kbs2
+kubectl taint nodes kbs2 alpine2=pod2:NoSchedule
+# ^This ensures that Pods without toleration alpine2 not scheduled on kbs2.
+
+- Review files
+  - codebase/pod/tolerate1.yaml
+  - codebase/pod/tolerate2.yaml
+kubectl apply -f codebase/pod/tolerate1.yaml
+kubectl apply -f codebase/pod/tolerate2.yaml
+kubectl get pods -o wide
+# ^ Pod must be scheduled on kbs3
+
+- Below is command to remove taints
+kubectl taint nodes kbs2 alpine2-
+kubectl taint nodes kbs3 alpine-
+
+******************************************************
+7. Node Selector
+- A way to schedule pod on particular node.
+- This option is for simpler single condition.
+
+- First add label to Node with below command
+kubectl label node kbs2 disktype=ssd
+
+- Review file codebase/pod/nsalpine.yaml
+- Run below commands
+kubectl apply -f codebase/pod/nsalpine.yaml
+kubectl get pods
+
+******************************************************
+8. Node Affinity
+- A way to schedule pod on particular node.
+- This option is for complex multiple conditions.
+- nodeAffinity
+  - node affinity scheduling rules for the pod.
+  - If rule evaluates true then spinup pod on node.
+  - Help
+    - kubectl explain pod.spec.affinity
+
+******************************************************
+9. Properties of Node Affinity
+- Two Properites
+  - preferredDuringSchedulingIgnoredDuringExecution
+  - requiredDuringSchedulingIgnoredDuringExecution
+
+- Help
+  - kubectl explain pod.spec.affinity.nodeAffinity
+
+- preferredDuringSchedulingIgnoredDuringExecution
+  - Creation
+    - If rule evalutes to true for specific node then
+      - Node might be preferred for scheduling
+      - But not guaranteed to schedule on that node.
+    - Else
+      - Pod is going to be scheduled on any node.
+  - Execution
+    - If rule evaluates to false for node where Pod running then
+      - No effect because "IgnoredDuringExecution"
+- requiredDuringSchedulingIgnoredDuringExecution
+  - Creation
+    - If rule evalutes to true for specific node then
+      - Node is guaranteed to schedule on that node.
+    - Else
+      - Pod won't be scheduled
+  - Execution
+    - If rule evaluates to false for node where Pod running then
+      - No effect because "IgnoredDuringExecution"
+
+******************************************************
+10. Node Affinity : Hands-on
+- Add below labels to kbs2 and kbs3
+# 2 -- kbs2
+kubectl label nodes kbs2 type=flexible
+kubectl label nodes kbs2 visa=all
+# 3 -- kbs3
+kubectl label nodes kbs3 visa=all
+kubectl label nodes kbs3 type=specific
+
+- Review file codebase/pod/affinity1.yaml
+- Run below command
+kubectl apply -f codebase/pod/affinity1.yaml
+kubectl get pods -o wide
+# ^Pod should spin up on kbs2
+
+- Remove labels
+kubectl delete pod affinity1
+kubectl label nodes kbs2 type-
+kubectl label nodes kbs2 visa-
+kubectl label nodes kbs3 type-
+kubectl label nodes kbs3 visa-
+
+- Help
+  - kubectl explain pod.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms.matchExpressions
+
+******************************************************
+11. Security Context
+- Security context can be set at two levels.
+  - Pod
+  - Container
+- Container level security context take precedence over Pod.
+- There are many attributes related to security.
+- Working with below two attributes for now.
+  - runAsUser
+    - User ID that containers in this pod should run as
+  - fsGroup
+    - Group ID for filesystem access
+
+******************************************************
+12. Security Context : Hands-on
+- Review file codebase/pod/scontext.yaml
+- Explain security context for two containers.
+- Run below commands
+kubectl apply -f codebase/pod/scontext.yaml
+kubectl get pods
+kubectl exec scontext -c alpine1 -it -- /bin/sh
+$ id
+kubectl exec scontext -c alpine2 -it -- /bin/sh
+$ id
+
+

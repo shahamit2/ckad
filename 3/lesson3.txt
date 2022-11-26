@@ -1,0 +1,205 @@
+Index: -
+1. Objective
+2. About Pod Lifecycle
+3. About Container State
+4. About Pod Conditions
+5. Pod restartPolicy
+6. Pod Ready and Live
+7. Probe
+8. Handler Fields
+9. Readiness Probe : httpGet : Hands-on
+10. Liveness Probe : httpGet : Hands-on
+11. How Probe helps?
+12. Prepare image for readiness failure
+13. Pod definition for readiness failure
+14. Note
+
+******************************************************
+1. Objective
+- Learn about
+  - Lifecycle of Pod
+  - Container State
+  - Pod Conditions
+  - How to check App inside Pod is ready?
+  - How to check App inside Pod is live?
+  - Service and Pod traffic routing
+
+******************************************************
+2. About Pod Lifecycle
+- Pod Lifecycle States
+  - Pending
+    - Container image download yet to start or complete
+    - Pod is yet to schedule on any node
+  - Running
+    - Atleast one container is in running state
+    - OR one container in start/restart process
+  - Succeeded
+    - All containers in the Pod have terminated in success, and will not be restarted.
+  - Failed
+    - All containers terminated and atleast one ran into errors
+  - Unknown
+    - Pod status could not be obtained
+
+- Pod status can be seen with describe and get command.
+kubectl get pods
+kubectl describe pod <name>
+
+******************************************************
+3. About Container State
+- Container States
+  - Waiting
+    - Possible reasons
+      - Image not pulled, Container start in progress, etc.
+    - Run kubectl describe pod to see exact "reason"
+      - Container section contains "reason" field.
+  - Running
+    - Container started without any issue.
+  - Terminated
+    - Container completed task successfully or failed due to some reason.
+    - Run kubectl describe pod to see exact "reason"
+
+- Container status inside can be seen with describe and get command.
+kubectl get pods
+kubectl describe pod <name>
+
+******************************************************
+4. About Pod Conditionss
+- Pod Conditions
+  - PodScheduled
+    - Pod scheduled to a node.
+  - Initialized
+    - All containers started successfully.
+  - ContainersReady
+    - All containers in the Pod are ready.
+  - Ready
+    - Pod is ready to serve requests
+
+- Run below command and see for Pod conditions field.
+kubectl describe pod <name>
+
+******************************************************
+5. Pod restartPolicy
+- Value for "restartPolicy" in Pod definition applies to all containers.
+- Possible values
+  - Always
+    - Kubelet restarts container when it completes.
+    - Restart back-off delay is exponential(10s,20s,40s)
+  - OnFailure
+    - Kubelet restarts container only when it runs into errors.
+  - Never
+    - Kubelet never restart container(whether error or success).
+
+******************************************************
+6. Pod Ready and Live
+- Scenario-1
+  - Container inside Pod starts successfully.
+  - Is it still ready to serve request?
+- Scenario-2
+  - Container was serving request.
+  - How to know whether still its running and not dead?
+- Solution
+  - K8S provides two objects to help with that.
+    - ReadinessProbe
+    - LivenessProbe
+
+******************************************************
+7. Probe
+- A diagnostic performed periodically by the kubelet on a Container.
+- Kubelet calls handler to perform diagnostic.
+- Three types of handlers
+  - ExecAction
+    - Execute command inside a container.
+    - Successful if exit status is 0.
+  - TCPSocketAction
+    - TCP check against Pod's-IP and specific Port
+    - Successful if port is open.
+  - HttpGetAction
+    - HTTP Get against Pod's-IP, container Port and Path.
+    - Successful if status code > 200 and < 400.
+
+******************************************************
+8. Handler Fields
+- Inside container handler can be specified as below.
+- Handler httpGet
+  - httpGet:
+      path:
+      port:
+- Handler tcpSocket
+  - tcpSocket:
+      port
+- Handler exec
+  - exec:
+    command:
+    - cat
+    - /etc/test/abc.txt
+
+******************************************************
+9. Readiness Probe : httpGet : Hands-on
+- Review file codebase/pod/readynginx.yaml
+- About failureThreshold
+  - Probe of readiness is done for threashold value.
+  - If still Pod is not ready to serve then it's failed.
+- About periodSeconds
+  - Time between two Probes.
+- About initialDelaySeconds
+  - Explicit wait for first probe.
+- Run below commands
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/readynginx.yaml
+kubectl describe pod readynginx | grep Readiness
+kubectl get pods -o wide
+# curl -XGET http://<pod-ip>:80/
+
+******************************************************
+10. Liveness Probe : httpGet : Hands-on
+- Review file codebase/pod/livenginx.yaml
+- Similar to Readiness probe.
+- Run below commands
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/livenginx.yaml
+kubectl describe pod livenginx  | grep Liveness
+kubectl get pods -o wide
+# curl -XGET http://<pod-ip>:80/
+
+******************************************************
+11. How Probe helps?
+- Services in k8s routes traffic to Container inside Pod.
+- Scenario - 1
+  - Pod is in "ready" state.
+  - Container process is started.
+  - But web application is yet to come up.
+  - Serives see status as ready and start to forward traffic.
+  - This result in failure.
+- Solution
+  - Here is when readiness probe helps.
+- Scenario - 2
+  - Container App inside Pod is running fine.
+  - Due to some bug it stops service requests.
+  - Container did not stop but became stale.
+- Solution
+  - Here is when liveness probe helps.
+
+******************************************************
+12. Prepare image for readiness failure
+- Review files in codebase/images/fun
+- Run below commands on local machine
+cd codebase/images/fun
+docker build . -t amitshah/fun
+docker push amitshah/fun
+
+******************************************************
+13. Pod definition for readiness failure
+- Review file codebase/pod/readyfun.yaml
+- Run below commands
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/readyfun.yaml
+# Constantly observe output of below command.
+kubectl describe pod readyfun
+# ^This can cause issue for service.
+# ^We are yet to get introduced to service.
+# ^But probe output can give some idea.
+
+******************************************************
+14. Note
+- tcpSocket and exec are very similar Probes and hence not done separately.
+

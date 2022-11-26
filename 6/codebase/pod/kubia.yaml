@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: kubia
+  name: kubia
+spec:
+  containers:
+  - name: kubia
+    image: luksa/kubia   
+    ports:
+    - name: http
+      containerPort: 8080
+    - name: https
+      containerPort: 8443

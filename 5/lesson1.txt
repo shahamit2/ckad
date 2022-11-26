@@ -1,0 +1,123 @@
+Index: -
+1. Objective
+2. About Annotations
+3. Annotations : Hands-on
+4. About Labels
+5. About Selectors
+6. Querying with Labels
+7. Selector in YAML
+8. Replicaset example for selectors
+
+
+******************************************************
+1. Objective
+- Below topics are covered.
+  - Annotations, Labels and Selectors
+  - Replicaset with matchLabel and matchExpression
+
+******************************************************
+2. About Annotations
+- Add metadata information to object.
+- Any key-value pair can be provided.
+- Also a way to record what options are provided on command line.
+
+******************************************************
+3. Annotations : Hands-on
+- Without annotation
+kubectl run nobb --image=busybox --command -- sleep 360
+kubectl describe pod nobb | grep -i anno
+
+- With annotation
+kubectl run yesbb --image=busybox --record --command -- sleep 360
+kubectl describe pod yesbb | grep -i anno
+
+- Adding annotation
+kubectl annotate pod yesbb netflix.com/summerdiscount=50
+kubectl describe pod yesbb | grep -i netflix
+
+******************************************************
+4. About Labels
+- Sceneario - 1
+  - Pod with 4 replica started by Replicaset
+  - 1 pod deleted by mistake.
+  - How to spin that pod up back as a part of that ReplicaSet?
+  - How to know that out of total 1000 Pods which RS pod got deleted?
+- Scenario - 2
+  - Service is spin up and it is required to route traffic to pod.
+  - How to figure out that out of 1000 Pods to which pods traffic should go?
+- Scenario - 3
+  - Node is going to be in maintenance state.
+  - How to make sure that no pod gets scehdule on that Node?
+- Solution
+  - Labels.
+  - Label is added as metadata to each object/resource in K8S.
+  - Label helps with grouping/identifying related resources/objects.
+
+******************************************************
+5. About Selectors
+- Useful in querying object based on labels.
+- Example
+  - Replicaset queries all pods with specific labels.
+    - Spinup new pod if count is less than expected replicas.
+  - Service send traffic to pod A. Pod A dies.
+    - New Pod A with different IP is created.
+    - Service able to send traffic to new Pod A based on selector.
+
+******************************************************
+6. Querying with Labels
+- Do deployment and then play with labels.
+- Create Pod with nginx image.
+
+- Run below command
+vagrant ssh kbs1
+kubectl apply -f codebase/deployment/dep-nginx.yaml
+kubectl run nginx1 --image=nginx
+
+- Display labels attached to resource
+kubectl get pod --show-labels
+kubectl get replicaset --show-labels
+kubectl get deployment --show-labels
+
+- Show labels as columns
+kubectl get pod -L app
+- ^ here app is name of key
+
+- Remove labels
+kubectl label pod dep-nginx-75ddff596-7djfl app-
+
+- Add labels
+kubectl label pod dep-nginx-75ddff596-7djfl app=dep-nginx
+
+- Filter condition based on label
+kubectl get pods --show-labels
+kubectl get pods -l run=nginx1
+kubectl get all --selector run=nginx1
+kubectl get pods -l '!run'
+
+******************************************************
+7. Selector in YAML
+- Selector can be specified in two ways in YAML.
+- matchLabels
+selector:
+  matchLabels:
+    app: flask
+
+- matchExpressions
+selector:
+  matchExpressions:
+  - key: app
+    operator: In
+    values:
+    - flask
+
+******************************************************
+8. Replicaset example for selectors
+- Review files in codebase/replicaset for matchLable and matchExpression selectors.
+- Run below commands
+vagrant ssh kbs1
+kubectl apply -f replicaset/rsexpression.yaml
+kubectl apply -f replicaset/rslabel.yaml
+kubectl get rs --show-labels
+
+
+

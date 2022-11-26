@@ -1,0 +1,229 @@
+Index: -
+1. Objective
+2. Deployment Strategy
+3. K8S Deployment Strategy
+4. Rolling update
+5. Rolling update Hands-on
+6. Pod - Imperative
+7. About Job
+8. About Job Properties
+9. Job : Hands-on
+10. About CronJob
+11. CronJob : Hands-on
+12. Quick commands
+
+******************************************************
+1. Objective
+- Below topics are covered.
+  - Deployment Strategy
+  - Deployment Rollback
+  - Job, CronJob
+
+******************************************************
+2. Deployment Strategy
+- Process of releasing new version of Product.
+- Strategies
+  - Recreate
+    - VersionA is terminated then versionB is rolled out.
+  - Ramped (rolling-update or incremental)
+    - Version B is slowly rolled out and replacing version A.
+  - Blue/Green
+    - VersionB is released alongside versionA.
+    - Testing of Version B is done.
+    - After Testing traffic is switched to version B.
+  - Canary
+    - Version B is released to a subset of users (10%).
+    - Gradually shift traffic from VersionA to VersionB
+    - Over the period of time full rollout is done.
+  - A/B testing
+    - Version B is released to a subset of users under specific condition(feature conversion).
+  - Shadow
+    - Version B receives real-world traffic alongside version A
+      and doesn’t impact the response.
+
+******************************************************
+3. K8S Deployment Strategy
+- How to replace existing pods with new ones.
+- Type
+  - Recreate
+    - Version A is terminated then Version B is rolled out.
+    - Example
+      - Existing deployment V1 has 3 replicas.
+      - All 3 V1 pods are terminated.
+      - Termination action completes.
+      - Three pods of V2 version are deployed.
+  - RollingUpdate
+    - Version B is slowly rolled out and replacing version A.
+    - Example
+      - Existing deployment V1 has 3 replicas.
+      - New version V2 is deployed.
+      - One Pod of V2 is created and V1 is terminated.
+      - Likewise for Two and Three.
+
+******************************************************
+4. Rolling update
+- It has parameters that control the desired behavior of rolling update.
+- Parameters
+  - maxSurge
+  - maxUnavailable
+- maxSurge
+  - Value can be number or percentage.
+  - Default is 25%.
+  - Decides maximum number of Pods can be available during rolling update.
+  - Example
+    - Deployment has replica of 10 pods.
+    - maxSurge=2
+    - Rolling update can have two new pods immediately.
+    - Rolling update can have maximum 12 pods at any given point in time.
+    - maxSurge=40%
+    - Rolling update can have four new pods immediately.
+    - Rolling update can have maximum 14 pods at any given point in time.
+- maxUnavailable
+  - Value can be number or percentage.
+  - Default is 25%.
+  - Decides maximum number of Pods can be unavailable during rolling update.
+  - Example
+    - Deployment has replica of 10 pods.
+    - maxUnavailable=4
+    - Rolling update kills 4 old pods immediately.
+    - maxSurge=50%
+    - Rolling update kills 5 old pods immediately.
+- Corner case
+  - maxUnavailable=0
+    - Count of replica mentioned in deployment should be always up.
+    - No old Pods can be killed until new pod spin up.
+    - It means maxSurge can't be 0 when maxUnavailable=0.
+  - maxSurge=0
+    - Maximum number of pods can't exceed value in replica.
+    - It means that maxUnavailable can't be set to 0 when maxSurge=0.
+    - If maxUnavailable is also 0 then it's dead lock.
+    - Because maxUnavailable is waiting for increase of Pod.
+
+******************************************************
+5. Rolling update Hands-on
+- Review file codebase/deployment/dep-surge.yaml
+
+- Run below commands
+kubectl apply -f codebase/deployment/dep-surge.yaml
+kubectl get pods -o wide
+kubectl rollout status -w deployment/dep-surge
+
+- Change image from nginx:1.7.1 to nginx:1.9.1
+- Do it imperatively and observe rollingUpdate Pod count.
+kubectl set image deployment/dep-surge nginx=nginx:1.9.1
+kubectl get pods
+kubectl get deploy -o wide
+kubectl rollout status deployment/dep-surge
+
+- History of deployment
+kubectl rollout history deployment/dep-surge
+
+- History of specific revision
+kubectl rollout history deployment/dep-surge --revision=1
+
+- Rollback to 1 with undo
+kubectl rollout undo deployment/dep-surge --to-revision=1
+kubectl get deploy -o wide
+kubectl get pods
+kubectl rollout status deployment/dep-surge
+
+******************************************************
+6. Pod - Imperative
+- Spinup pod with container busybox and sleep command.
+kubectl run busybox --image=busybox --command -- sleep 360
+kubectl get pods -o wide
+kubectl get pods --watch
+
+- Inside pod
+kubectl exec -it busybox -- /bin/sh
+ls
+
+- Delete Pod
+kubectl delete pod busybox
+
+******************************************************
+7. About Job
+- Execute a task.
+- Reattempt task if it fails.
+- Pod remains after job completion for the purpose of log checking.
+- Multiple executions of task is possible.
+- Parallel executions of job is also possible.
+- Set timeline for job completion.
+  - If not completed in timeline them mark failure.
+  - Pod gets terminated.
+
+******************************************************
+8. About Job Properties
+- completions
+  - How many times created pod should terminate successfully?
+- parallelism
+  - How many Pods runs in parallel?
+- Property "restartPolicy" is self explanatory.
+  - onFailure
+  - Never
+- backoffLimit
+  - Number of retries before marking job failure
+- activeDeadlineSeconds
+  - Set duration for job to complete.
+
+******************************************************
+9. Job : Hands-on
+- Run below command to generate job file.
+kubectl create job bbjob --image=busybox --dry-run=client -o yaml > codebase/job/bbjob.yaml
+
+- Edit job file and add properties.
+- Review file codebase/job/bbjob.yaml
+
+- Run below commands
+kubectl apply -f codebase/job/bbjob.yaml
+kubectl get jobs
+kubectl get pods
+kubectl logs <pod-name>
+
+******************************************************
+10. About CronJob
+- Executes task on scheduled time.
+- Comes with set of properties.
+  - Start seconds timeline when scheduled time missed.
+  - The number of failed finished jobs to retain.
+  - The schedule in Cron format
+  - The number of successful finished jobs to retain
+
+******************************************************
+11. CronJob : Hands-on
+- Run below command to generate job file.
+kubectl create cronjob bbcronjob --image=busybox \
+    --schedule="*/1 * * * *" \
+    --dry-run=client -o yaml > codebase/cronjob/bbcronjob.yaml
+
+- Edit cronjob file
+- Review file codebase/cronjob/bbcronjob.yaml
+
+- Run below commands
+kubectl apply -f codebase/cronjob/bbcronjob.yaml
+kubectl get cronjob -o wide
+# Wait for 1 minute
+kubectl get jobs
+kubectl get pods
+kubectl logs <pod-name>
+
+******************************************************
+12. Quick commands
+- Get all type of resources from all namespaces
+kubectl get all --all --all-namespace
+
+- Delete all type of resources from all namespaces
+kubectl delete all --all --all-namespace
+
+- Delete all deployment/pods of current namespaces
+kubectl delete pods --all
+kubectl delete deployment --all
+
+- Force deletes pod immediately.
+kubectl delete pod <name> --force
+
+- Object created imperatively can't use apply in future.
+  - There is a way out for it.
+  - Use switch "--save-config=true" with imperative command.
+    - This will save current object in annotation.
+  - Now "apply" can be used with same object.

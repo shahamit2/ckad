@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx3vol
+  name: nginx3vol
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    volumeMounts:
+    - name: myvol
+      mountPath: /etc/config
+  volumes:
+  - name: myvol
+    configMap:
+      name: dbconfig3
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never

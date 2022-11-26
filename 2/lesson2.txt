@@ -1,0 +1,141 @@
+Index: -
+1. Objective
+2. About Imperative
+3. About Namespace
+4. Namespace : Hands-on
+5. Define Deployment, Replicaset, Pods
+6. Component Relation
+7. Deployment, Replicaset, Pods : Hands-on : 1
+8. Deployment, Replicaset, Pods : Hands-on : 2
+
+******************************************************
+1. Objective
+- Learn imperative way of doing things.
+- Top-Down approach for learning most used k8s components
+
+******************************************************
+2. About Imperative
+- Telling k8s to do specific activity is imperative.
+- Examples
+  - kubectl create deployment <>
+  - kubectl delete deployment <>
+  - kubectl set image deployment/<> <>=<>
+  - kubectl delete replicaset <>
+  - kubectl delete pod <>
+  - kubectl run <> --image=<>
+
+******************************************************
+3. About Namespace
+- Provides isolation for groups of resources within a single cluster.
+  - Namespaced resources
+    - Pod, Replicaset, Deployment, Services, Config, Secret, etc
+  - Global resources
+    - Volumes
+- A way for K8S admin to grant appropriate permissions to respective team.
+
+******************************************************
+4. Namespace : Hands-on
+- List namespace
+kubectl get ns
+
+- Create namespace
+kubectl create ns learnk8s
+
+- Set learnk8s as default namespace
+kubectl config set-context learnk8s --cluster=minikube --namespace=learnk8s
+
+- List specifc namespace
+kubectl get all --namespace=kube-system
+kubectl get all -n kube-system
+
+- List everything
+kubectl get all --all-namespaces
+
+#### IMPORATANT ####
+Note:
+- CKAD exam: Always check for mention of namespace.
+- Make sure that -n switch is used or context is changed for given namespace.
+#####################
+
+******************************************************
+5. Define Deployment, Replicaset, Pods
+- Deployment
+  - Enables declarative updates for Pods and ReplicaSets.
+  - Define Rollout Strategy
+  - Maintain Rollout history.
+  - Undo rollout to specific revision.
+- Replica
+  - Ensures that a specified number of pod replicas are running at
+    any given time.
+- Pod
+  - A collection of containers that can run on a host.
+    - Containers can communicate on loopback IP
+  - Smallest unit
+  - Dynamic Private IP
+
+******************************************************
+6. Component Relation
+- Container(s) -> Pod(s) -> ReplicaSet -> Deployment
+- K8S Components
+  - Pod, ReplicaSet, Deployment
+
+******************************************************
+7. Deployment, Replicaset, Pods : Hands-on : 1
+- Start with below commands
+kubectl create deployment my-dep --image=nginx --replicas=3
+
+- List deployments
+kubectl get deploy
+kubectl get deploy -o wide
+
+- List replicaset
+kubectl get rs
+kubectl get rs -o wide
+
+- List pods
+kubectl get pods
+kubectl get pods -o wide
+
+- Describe Components
+kubectl describe deployment my-dep
+kubectl describe replicaset my-dep-<hash>
+kubectl describe pod my-dep-<rs-hash>-<pod-hash>
+
+******************************************************
+8. Deployment, Replicaset, Pods : Hands-on : 2
+##### 1 ######
+- Delete one of the pod
+kubectl get pods
+kubectl delete pod my-dep-5b7868d854-mf8cd
+
+- Now observe that new one is automatically created.
+- Observe that suffix of new pod is different.
+kubectl get pods
+
+##### 2 ######
+- Delete replicaset
+kubectl get rs
+kubectl delete rs my-dep-5b7868d854
+
+- Now observe that new one is automatically created.
+kubectl get rs
+kubectl get pods
+
+##### 3 ######
+- Change replica to 2.
+kubectl edit deploy my-dep
+
+- Now observe count
+kubectl get rs
+kubectl get pods
+
+##### 4 ######
+- Change image to nginx:1.7.1
+kubectl edit deploy my-dep
+
+- Now observe image
+kubectl get deploy -o wide
+
+******************************************************
+
+

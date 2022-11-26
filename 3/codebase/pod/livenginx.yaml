@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: livenginx
+  name: livenginx
+spec:
+  containers:
+  - image: nginx
+    name: livenginx
+    livenessProbe:
+       httpGet:
+         scheme: HTTP
+         path: /index.html
+         port: 80
+       initialDelaySeconds: 10
+       periodSeconds: 5
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always

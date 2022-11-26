@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qos3
+  namespace: default
+  labels:
+    app: qos3
+spec:
+  containers:
+  - name: qos3
+    image: busybox
+    command:
+    - "sleep"
+    args:
+    - "360"
+    resources:
+     requests:
+       memory: "10Mi"
+       cpu: "0.2"
+     limits:
+       memory: "10Mi"
+       cpu: "0.2"

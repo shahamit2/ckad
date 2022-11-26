@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bb3
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    volumeMounts:
+    - name: test
+      mountPath: /etc/test
+    command:
+    - sleep
+    - "360"
+  volumes:
+  - name: test
+    gitRepo:
+      repository: https://github.com/dgkanatsios/CKAD-exercises.git
+      directory: .
+      revision: master

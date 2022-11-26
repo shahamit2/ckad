@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx11
+  name: nginx11
+spec:
+  containers:
+  - env:
+    - name: dbuser
+      valueFrom:
+        secretKeyRef:
+          name: dbsec1
+          key: dbuser
+    - name: dbpass
+      valueFrom:
+        secretKeyRef:
+          name: dbsec1
+          key: dbpass
+    image: nginx
+    name: nginx11
+    resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}

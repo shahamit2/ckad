@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: iworld
+  name: iworld
+spec:
+  ports:
+  - name: 5001-4001
+    port: 5001
+    protocol: TCP
+    targetPort: 4001
+  selector:
+    run: world
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: iheaven
+  name: iheaven
+spec:
+  ports:
+  - name: 5002-4002
+    port: 5002
+    protocol: TCP
+    targetPort: 4002
+  selector:
+    run: heaven
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: ihell
+  name: ihell
+spec:
+  ports:
+  - name: 5003-4003
+    port: 5003
+    protocol: TCP
+    targetPort: 4003
+  selector:
+    run: hell
+  type: ClusterIP

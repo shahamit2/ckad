@@ -1,0 +1,333 @@
+Index: -
+1. Objective
+2. About Storage
+3. About Volumes
+4. Using Volumes
+5. Volume emptydir
+6. Volume hostpath
+7. Volume gitRepo
+8. Volume downwardAPI
+9. Overhead for Developers
+10. About Persistent Volume
+11. About Persistent Volume Claim
+12. PV Hands-on
+13. PV Reclaim Policy
+14. PV Access Modes
+15. PVC Hands-on
+16. Pod and PVC
+17. Procedure to reuse released PV
+18. About Storage Class
+19. Aside - GKE Cluster
+20. Storage class : Hands-on
+21. Dynamic PV : Hands-on
+22. Cleanup
+
+******************************************************
+1. Objective
+- Learn about volumes.
+- Note
+  - Volume for ConfigMap and Secret is covered in respective lessons.
+
+******************************************************
+2. About Storage
+- Scenario
+  - Container can write to filesystem.
+  - When container restarts everything is lost.
+  - How to preserve data across restart?
+- A way to go
+  - Volume helps with preserving data across restart.
+
+******************************************************
+3. About Volumes
+- Volume is
+  - A directory, with some data in it.
+  - Accessible to the containers in a pod.
+  - Many types of volumes exists in k8s.
+  - Pod can use N number of Volume types simultaneously.
+- Ephemeral volumes have a lifetime of a pod.
+- Persistent volumes exist beyond the lifetime of a pod.
+
+- Volume Types
+  - Cloud Providers
+    - awsElasticBlockStore, azureDisk, gcePersistentDisk, etc.
+  - Other
+    - hostpath, emptydir, downwardAPI, gitRepo, nfs, etc.
+
+- Note
+  - Cloud base is not there in exam but it is covered in course.
+
+******************************************************
+4. Using Volumes
+- Two step process
+  - pod.spec.volumes
+  - pod.spec.containers[*].volumeMounts
+- "Name" is common between volumes and volumeMounts.
+
+- Volumes
+  - Below example is for volume type "hostPath". s
+  - e.g.:
+    volumes:
+     - name: test <---  Same name in "volumeMounts"
+       hostPath:
+        path: /home/vagrant/volumedata
+
+- volumeMounts
+  - e.g.:
+    containers
+    - image: busybox
+      volumeMounts:
+      - name: test <---  Same name in "volumes"
+        mountPath: /etc/test
+
+
+******************************************************
+5. Volume emptydir
+- Ephemeral type of volume.
+- Useful for sharing data between containers in a pod.
+- Review file volumes/emptydir/multicontainer.yaml.
+
+- Run below command.
+vagrant ssh kbs1
+kubectl apply -f volumes/emptydir/multicontainer.yaml
+# Insert data in shared volume from container bb2
+kubectl exec bb -c bb2 -- /bin/sh -c 'echo cool > /etc/test/winter'
+# Read data from shared volume from container bb1
+kubectl exec bb -c bb1 -- cat /etc/test/winter
+
+******************************************************
+6. Volume hostpath
+- Persistent type of volume.
+  - Exists beyond life of pod.
+- Review files
+  - volumes/hostpath/bb1.yaml
+  - volumes/hostpath/bb2.yaml
+
+- Run below command for bb1 pod
+kubectl apply -f volumes/hostpath/bb1.yaml
+kubectl exec bb1 -- /bin/sh -c 'echo cool > /etc/test/winter'
+kubectl get pods -o wide
+# Login to worker node where pod is created
+vagrant ssh <workernode>
+cat volumedata/winter
+# Delete pod
+kubectl delete pod bb1
+
+- Run below command for bb2 pod
+kubectl apply -f volumes/hostpath/bb2.yaml
+kubectl get pods -o wide
+# If pos is created on same node as bb1 then execute below.
+kubectl exec bb2 -- cat /etc/test/winter
+# Recreate bb2 till the time it is not created on same node as bb1.
+
+******************************************************
+7. Volume gitRepo
+- Ephemeral type of volume like emptyDir.
+- Clone gitRepo in volume directory.
+- Review file volumes/gitrepo/bb3.yaml
+
+- Run below command.
+vagrant ssh kbs1
+kubectl apply -f volumes/gitrepo/bb3.yaml
+# Insert data in shared volume from container bb2
+kubectl exec bb3 -- ls -ltR /etc/test
+# ^observe repo cloned
+
+******************************************************
+8. Volume downwardAPI
+- Ephemeral type of volume like emptyDir.
+- Maps requested pod info to volume.
+- Container can access volume to get pod info.
+- Review file volumes/downardapi/bb4.yaml
+
+- Run below command.
+kubectl apply -f volumes/downwardapi/bb4.yaml
+kubectl exec bb4 -- cat /etc/podinfo/labels
+kubectl exec bb4 -- cat /etc/podinfo/annotations
+
+******************************************************
+9. Overhead for Developers
+- Problem
+  - So far to work with Volumes knowledge of volume type is required.
+  - Developer may not be interested in knowing this.
+  - Decoupling of Pod and Volume is required.
+- Solution
+  - Persistent Volume and Persistent Volume claim helps with that.
+  - Cluster admin will create PV + PVC objects for Dev team.
+  - Dev team just need to mention PVC it in spec.
+
+******************************************************
+10. About Persistent Volume
+- Cluster level piece of storage i.e. don't belong to namespace.
+- Allows to specify
+  - Storage capacity
+  - Access Modes
+  - Retain or Delete (when claim is released)
+  - Type of Volume (hostpath, gcePersistentDisk, etc)
+
+******************************************************
+11. About Persistent Volume Claim
+- Belongs to namespace
+- Claims amount of storage from PV.
+- Two types of PVC
+  - Static
+    - Claims from already created PV.
+  - Dynamic
+    - Based on claim, PV gets created.
+
+******************************************************
+12. PV Hands-on
+- Using hostpath to show example of PV.
+- This PV is available for all namespaces in cluster.
+- Review file volumes/pv/myvol.yaml
+
+- Run below command.
+kubectl apply -f volumes/pv/myvol.yaml
+kubectl get pv -o wide
+
+******************************************************
+13. PV Reclaim Policy
+- Two possible values "Retain" and "Delete".
+  - Default is "Retain" for static.
+  - Default is "Delete" for dynamic.
+- Retain
+  - PVC is deleted then PV still exists.
+    - Need to reclaim manually following steps in below URL.
+    - https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+- Delete
+  - Deletion of PVC removes PV also.
+
+- For help
+  - kubectl explain pv.spec.persistentVolumeReclaimPolicy
+
+******************************************************
+14. PV Access Modes
+- ReadWriteOnce
+  - Can be mounted as read-write by a single node.
+  - Allow access to multiple pods running on the same node.
+- ReadOnlyMany
+  - Can be mounted as read-only by many nodes.
+- ReadWriteMany
+  - Can be mounted as read-write by many nodes.
+- ReadWriteOncePod
+  - Can be mounted as read-write by a single Pod.
+
+
+******************************************************
+15. PVC Hands-on
+- Claim consumes PV based on size and access mode.
+- It has a reference to pv "myvol" in "volumeName" field.
+- Review file volumes/pvc/myvolclaim1.yaml
+
+- Run below command.
+kubectl apply -f volumes/pvc/myvolclaim1.yaml
+kubectl get pv -o wide
+kubectl get pvc -o wide
+- ^Observe values of pv.status and pv.bound
+
+******************************************************
+16. Pod and PVC
+- Review file volumes/pvc/bbpvc.yaml
+- No mention of volumeType in pod definition.
+- PVC myvolclaim1 is used inside Pod definition.
+
+- Run below command.
+kubectl apply -f volumes/pvc/bbpvc.yaml
+kubectl exec bbpvc -it -- cp /etc/passwd /etc/test/
+kubectl exec bbpvc -it -- ls -lthr /etc/test
+
+******************************************************
+17. Procedure to reuse released PV
+- Run below commands to delete Pod and PVC
+kubectl delete pod bbpvc
+kubectl delete pvc myvolclaim1
+# check status
+kubectl get pv
+
+- Run below command to reuse released PV
+kubectl patch pv myvol -p '{"spec":{"claimRef": null}}'
+
+- Run below command to claim again.
+kubectl apply -f volumes/pvc/myvolclaim1.yaml
+kubectl apply -f volumes/pvc/bbpvc.yaml
+
+- Delete all
+kubectl delete pod bbpvc
+kubectl delete pvc myvolclaim1
+kubectl delete pv myvol
+
+******************************************************
+18. About Storage class
+- Storage class object stores info about creating  PV for Pod.
+- Storage class allows to create PVC without creating PV.
+  - This is how dynamic PV created.
+- Important fields for storage class
+  - provisioner
+    - Type of provisioner
+    - e.g.
+      provisioner: kubernetes.io/gce-pd
+  - parameters
+    - Parameters for provisioner that create storage class.
+    - e.g.
+      parameters:
+        type: pd-ssd
+        zone: us-west2-a
+  - reclaimPolicy
+    - e.g.
+      reclaimPolicy: Delete
+
+******************************************************
+19. Aside - GKE Cluster
+- Run below command to launch cluster
+gcloud beta container --project "learngcp-020678" clusters create "k8s-cluster1" --zone "us-west2-a" --no-enable-basic-auth --cluster-version "1.20.10-gke.301" --release-channel "regular" --machine-type "e2-medium" --image-type "COS_CONTAINERD" --disk-type "pd-standard" --disk-size "100" --metadata disable-legacy-endpoints=true --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" --max-pods-per-node "110" --num-nodes "3" --logging=SYSTEM,WORKLOAD --monitoring=SYSTEM --enable-ip-alias --network "projects/learngcp-020678/global/networks/vpc-k8s" --subnetwork "projects/learngcp-020678/regions/us-west2/subnetworks/sn1-uw2-k8s" --no-enable-intra-node-visibility --default-max-pods-per-node "110" --no-enable-master-authorized-networks --addons HorizontalPodAutoscaling,HttpLoadBalancing,GcePersistentDiskCsiDriver --enable-autoupgrade --enable-autorepair --max-surge-upgrade 1 --max-unavailable-upgrade 0 --enable-shielded-nodes --node-locations "us-west2-a"
+
+- List cluster
+gcloud container clusters list
+
+- Update .kube/config to access cloud cluster
+gcloud container clusters get-credentials k8s-cluster1 --zone us-west2-a --project learngcp-020678
+
+******************************************************
+20. Storage class : Hands-on
+- Review file volumes/storageclass/fast.yaml
+- Run below commands
+kubectl apply -f volumes/storageclass/fast.yaml
+kubectl get storageclass
+kubectl get pv
+kubectl get pvc
+
+******************************************************
+21. Dynamic PV : Hands-on
+- Review file volumes/pvc/fastpvc.yaml
+
+- Run below commands to create pvc
+kubectl apply -f volumes/pvc/fastpvc.yaml
+kubectl get pvc
+kubectl get pv
+
+- Run below command to create Pod with dynamic PV
+kubectl apply -f volumes/pvc/bbfastpvc.yaml
+kubectl get pods
+kubectl exec bbfastpvc -it -- /bin/sh
+df -kh | grep test
+- ^Observe that disk is dynamically created.
+
+# Check in gcloud ui for pv
+kubectl get pvc
+# Check if pv created automatically
+kubectl get pv
+
+
+******************************************************
+22. Cleanup
+
+kubectl delete pod bbfastpvc
+# delete pvc manually
+kubectl delete pvc fastpvc
+# check if pv deleted automatically
+kubectl get pv
+# check in gcloud ui for pv
+kubectl delete storageclass fast
+# delete cluster
+gcloud container clusters list
+gcloud container clusters delete k8s-cluster1
+

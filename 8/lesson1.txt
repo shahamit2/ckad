@@ -1,0 +1,358 @@
+Index: -
+1. Objective
+2. Secret Types
+3. Generic :: literal  :: create
+4. Generic :: env-file :: create
+5. Generic :: from-file - 1 :: create
+6. Generic :: from-file - 2 :: create
+7. Generic :: from-file - 3 :: create
+8. Generic Summary
+9. Inject Generic to Pod environment vars
+12. Inject Generic to Pod.env - valueFrom
+13. Inject Generic to Pod.env - envFrom
+14. Update of Generic not reflected in pod.env
+15. About Secret volume
+16. Inject Generic as volume to Pod
+17. Update Secret
+18. Conclusion
+19. Pod with private docker repo
+20. Docker registry
+21. Use Docker secret
+22. Run Pod with private image
+23. Pod YAML with private image
+24. Generic/Opaque using YAML
+25. Generate TLS cert and keys
+26. Create TLS secret
+27. View all secrets created so far
+
+
+******************************************************
+1. Objective
+- Learn about API object Secret.
+
+******************************************************
+2. Secret Types
+- Below are different types of secret
+  - generic (opaque)
+    - Create a secret from a local file, directory, or literal value
+  - docker-registry (kubernetes.io/dockerconfigjson)
+    - Create secret and attach it to service account
+    - Required to pull image from docker registry
+  - service-account (kubernetes.io/service-account-token)
+    - e.g.: kubelet uses service account to pull image
+  - tls (kubernetes.io/tls)
+     - Create TLS from public/private key pair.
+
+******************************************************
+3. Generic :: literal  :: create
+- Create secret using literal values
+- Run below commands
+kubectl create secret generic dbsec1 \
+  --from-literal=dbuser=root --from-literal=dbpass=mysql
+kubectl describe secret dbsec1
+kubectl get secret dbsec1
+- ^ Above commands does not reveal secret
+
+- Extract secrets
+kubectl get secret dbsec1 -o yaml
+- ^Note encoded secret value and decode it.
+- dbuser: cm9vdA== | dbpass: bXlzcWw=
+
+- Encoding
+  - K8S converts string into base64 encoding.
+
+- Decode Secrets
+echo 'cm9vdA==' | base64 -d
+echo 'bXlzcWw=' | base64 -d
+
+- Understand how key, values are created.
+  - Keys: dbuser, dbpass
+  - Values: cm9vdA==, bXlzcWw=
+
+******************************************************
+4. Generic :: env-file :: create
+- Create secert using "env-file".
+- Run below commands
+kubectl create secret generic dbsec2 --from-env-file=envs/dbcred.env
+
+- Decoding, Encoding and Extracting is same as literals.
+
+- Understand how key, values are created.
+  - Keys: dbuser, dbpass
+  - Values: cm9vdA==, bXlzcWw=
+
+
+******************************************************
+5. Generic :: from-file - 1 :: create
+- Create generic using "from-file".
+- Run below commands
+kubectl create secret generic dbsec3 --from-file=secrets/db.conf
+
+- Decoding, Encoding and Extracting is same as literals.
+
+- Understand how key, values are created.
+  - Key: db.conf
+  - Value: ZGJ1c2VyPXJvb3QKZGJwYXNzPW15c3FsCgo=
+
+- Important Note: Here dbuser and dbpass are not keys, but part of values.
+
+******************************************************
+6. Generic :: from-file - 2 :: create
+- Create generic using "from-file".
+- Run below commands
+kubectl create secret generic dbsec4 --from-file=master=secrets/db.conf
+
+- Decoding, Encoding and Extracting is same as literals.
+
+- Understand how key, values are created.
+  - Key: master
+  - Values: ZGJ1c2VyPXJvb3QKZGJwYXNzPW15c3FsCgo=
+
+- Important Note: Here dbuser and dbpass are not keys, but part of values.
+
+******************************************************
+7. Generic :: from-file - 3 :: create
+- Create generic using "from-file".
+- Run below commands
+kubectl create secret generic dbsec5 --from-file=secrets/
+
+- Decoding, Encoding and Extracting is same as literals.
+
+- Understand how keys, values are created.
+  - Keys: db.conf, ops.conf
+  - Values: -
+      ZGJ1c2VyPXJvb3QKZGJwYXNzPW15c3FsCgo=
+      ZGJ1c2VyPW9wcwpkYnBhc3M9b3BzMTIzCgo=
+
+- Important Note: Here dbuser, dbpass, opsuser and opspass are not keys,
+  but part of values.
+
+******************************************************
+8. Generic Summary
+- So far 5 generic secrets are created.
+  - dbsec1
+    - from literal
+  - dbsec2
+    - from envfile
+  - dbsec3
+    - from file
+    - Key is filename.
+    - Value is content of file.
+  - dbsec4
+    - from file
+    - Customized key.
+    - Value is content of file.
+  - dbsec5
+    - from folder/<all files>
+    - Keys are filenames.
+    - Values are content of file for respective key.
+
+******************************************************
+9. Inject Generic to Pod environment vars
+- Generic can be injected to pod.env with below constructs.
+  - valueFrom
+  - envFrom
+
+******************************************************
+12. Inject Generic to Pod.env - valueFrom
+- Generate  Pod definition with env variables.
+- Run below command
+kubectl run nginx11 --image=nginx --env=dbhost=val1 \
+  -o yaml --dry-run=client > codebase/pod/nginx11.yaml
+
+- File codebase/pod/nginx11.yaml
+  - Current section
+    - env:
+      - name: dbhost
+        value: val1
+  - Replace section as below
+    - env:
+      - name: dbuser
+        valueFrom:
+          secretKeyRef:
+            name: dbsec1
+            key: dbuser
+
+- Replace dbhost and add dbport in nginx11.yaml
+- Run below commands
+kubectl apply -f codebase/pod/nginx11.yaml
+kubectl exec nginx11 -- env | grep db
+
+Note:
+- dbsec1 == dbsec2
+  - Both key-value pairs are same of generic secret
+- Not repeating exercise
+
+******************************************************
+13. Inject Generic to Pod.env - envFrom
+
+- File: codebase/pod/nginx33env.yaml
+  - See section envFrom
+    envFrom:
+    - secretKeyRef:
+        name: dbsec
+
+- Run below commands
+kubectl apply -f codebase/pod/nginx33env.yaml
+kubectl exec nginx33env -- env | grep -a2 db.conf
+
+******************************************************
+14. Update of Generic not reflected in pod.env
+- Update dbpass
+  - Change dbpass from mysql to sql
+- Run  below command
+echo "sql" | base64
+# Value is c3FsCg==
+# Edit value using kubectl edit command
+kubectl edit secret dbsec1
+kubectl exec nginx11 -- env | grep db
+- ^ Change of secret not reflected inside pod.
+
+- Conclusion: Recreate Pod to see update of secret.
+
+******************************************************
+15. About Secret volume
+- Secret can be added to Pod using volume.
+- Below is syntaxt to be used in *.yaml for adding volumes.
+- container.volumeMounts
+volumeMounts:
+  - name: mysec
+    mountPath: /etc/secret
+- spec.volumes
+volumes:
+ - name: mysec
+    secret:
+      secretName: dbsec3
+      items:
+      - key: db.conf
+        path: db
+
+- Please note that volumes.name === volumeMounts.name
+  - Name equality is key for mapping secret to file system.
+
+******************************************************
+16. Inject Generic as volume to Pod
+- Create 3 Pods injetcing secret as volumes
+  - Respectively for each pod one secret i.e. dbsec3, 4 and 5.
+
+- Run below commands - dbsec3
+kubectl apply -f codebase/pod/nginx33vol.yaml
+kubectl exec nginx33vol -- cat /etc/secret/db
+
+- Run below commands - dbsec4
+kubectl apply -f codebase/pod/nginx44vol.yaml
+kubectl exec nginx44vol -- cat /etc/secret/db
+
+- Run below commands - dbsec5
+kubectl apply -f codebase/pod/nginx55vol.yaml
+kubectl exec nginx55vol -- cat /etc/secret/db
+kubectl exec nginx55vol -- cat /etc/secret/ops
+
+******************************************************
+17. Update Secret
+- Change dbpass in secrets/db.conf from mysql to sql
+- Generate base64 value
+  - cat secrets/db.conf | base64
+- Note value to update dbsec3
+  - ZGJ1c2VyPXJvb3QKZGJwYXNzPXNxbAoK
+- Run  below command
+kubectl edit secret dbsec3
+kubectl exec nginx33vol -- cat /etc/secret/db
+- ^ Change of secret is reflected inside pod.
+
+Conclusion: Change in secret is reflected with volumes.
+
+******************************************************
+18. Conclusion
+- Way to go for injecting secret to Pod is volume.
+  - Why?
+    - Changes in the secret are reflected in Pod.
+  - In production/staging/dev/test env any secret change
+    of any type can easily be injected inside Application.
+
+******************************************************
+19. Pod with private docker repo
+- Private image amitshah/greet:v1 is created in hub.docker.com
+- This image can't be pulled without credentials.
+- Run below command
+vagrant ssh kbs1
+kubectl run greet --image=amitshah/greet:v1
+kubectl describe pod greet
+- ^It will fail.
+
+Conclusion: Docker needs to authenticate who is pulling image.
+
+******************************************************
+20. Docker registry
+- Create docker registry secret.
+kubectl delete secret dockersec
+kubectl create secret docker-registry dockersec \
+  --docker-server='https://index.docker.io/v1/' \
+  --docker-username='' \
+  --docker-password='' \
+  --docker-email=''
+
+******************************************************
+21. Use Docker secret
+- Spin-up pod using docker secret "dockersec"
+- Run below command
+kubectl get sa
+kubectl patch serviceaccount default \
+    -p '{"imagePullSecrets": [{"name": "dockersec"}]}'
+
+******************************************************
+22. Run Pod with Private image
+- Run below command
+vagrant ssh kbs1
+kubectl run greet --image=amitshah/greet:v1
+kubectl describe pod greet
+
+******************************************************
+23. Pod YAML with private image
+- Review pod YAML
+  - File: codebase/pod/privategreet.yaml
+  - Section
+      imagePullSecrets:
+      - name: dockersec
+- Dettach secret from "serviceaccount default"
+kubectl patch serviceaccount default \
+    -p '{"imagePullSecrets": [{"name": "none"}]}'
+- Run below command
+kubectl apply -f codebase/pod/privategreet.yaml
+kubectl describe pod privategreet
+
+******************************************************
+24. Generic/Opaque using YAML
+- Run below command to create secret using encryped data
+kubectl apply -f codebase/secret/dbsec6.yaml
+kubectl describe secret dbsec6
+
+- Run below command to create secret using string data
+kubectl apply -f codebase/secret/dbsec7.yaml
+kubectl describe secret dbsec7
+
+- Run below command to create secret using secret generator
+- "-k" looks for kutomization.yaml file in codebase/secret/
+kubectl apply -k codebase/secret/
+
+******************************************************
+25. Generate TLS cert and keys
+- Run below commands
+vagrant ssh kbs1
+mkdir -p certs; cd certs
+openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 \
+    -nodes -out tls.crt -keyout tls.key
+
+******************************************************
+26. Create TLS secret
+- Run below imperative command to create tls secret
+kubectl create secret tls tls-secret --cert=certs/tls.crt \
+--key=certs/tls.key
+
+******************************************************
+27. View all secrets created so far
+- Run below command
+kubectl get secrets
+
+******************************************************
+Pending : usage of TLS, ctr, runc

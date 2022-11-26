@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kbs
+  annotations:
+   nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  defaultBackend:
+    service:
+      name: iworld
+      port:
+        number: 5001
+  rules:
+  - host: kbs.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: iworld
+            port:
+              number: 5001
+      - path: /heaven
+        pathType: Prefix
+        backend:
+          service:
+            name: iheaven
+            port:
+              number: 5002
+      - path: /hell
+        pathType: Prefix
+        backend:
+          service:
+            name: ihell
+            port:
+              number: 5003

@@ -1,0 +1,67 @@
+Index: -
+1. Objective
+2. About Declarative
+3. Declarative : Hands-on : 1
+4. Declarative : Hands-on : 2
+
+******************************************************
+1. Objective
+- Learn declarative way of doing things.
+
+******************************************************
+2. About Declarative
+- In K8S a way to go is "DECLARATIVE" approach.
+- Concerned with end result and not "how to be done".
+- K8S gets declarative file and
+  - Bring object to desired state as mentioned in file.
+  - Figures out on its own whether to scale up/down or modify.
+- Instead of giving create/delete/edit just give "APPLY".
+  - example
+    - kubectl apply -f <filename>
+
+******************************************************
+3. Declarative : Hands-on : 1
+- K8S figures out by looking at YAML file operation to be done.
+- Three rounds: Applying deployment with making changes.
+
+#############
+- Round 1
+- File: codebase/deployment/dep-nginx.yaml
+  - image: nginx
+  - replicas: 2
+kubectl apply -f dep-nginx.yaml
+kubectl get deploy dep-nginx -o wide
+
+#############
+- Round 2
+- File: codebase/deployment/dep-nginx.yaml
+  - image: nginx:1.7.1
+  - replicas: 2
+kubectl apply -f dep-nginx.yaml
+kubectl get deploy dep-nginx -o wide
+
+#############
+- Round 3
+- File: dep-nginx.yaml
+  - image: nginx
+  - replicas: 3
+kubectl apply -f dep-nginx.yaml
+kubectl get deploy dep-nginx -o wide
+
+******************************************************
+4. Declarative : Hands-on : 2
+- This is just another object i.e. Pod
+
+#############
+- Round 1
+- File: codebase/pod/pod-nginx.yaml
+  - image: nginx:1.7.1
+kubectl apply -f codebase/pod/pod-nginx.yaml
+kubectl describe pod pod-nginx | grep Image
+
+#############
+- Round 2
+- File: codebase/pod/pod-nginx.yaml
+  - image: nginx
+kubectl apply -f codebase/pod/pod-nginx.yaml
+kubectl describe pod pod-nginx | grep Image

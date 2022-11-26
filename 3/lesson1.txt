@@ -1,0 +1,66 @@
+Index: -
+1. Objective
+2. Logs : Hands-on
+3. Attach : Hands-on
+4. Execute : Hands-on : 1
+5. Execute : Hands-on : 2
+
+******************************************************
+1. Objective
+- Learn how to
+  - View container logs
+  - Attach to running container
+  - Execute commands inside container
+
+******************************************************
+2. Logs : Hands-on
+- Spin-up Pod with container nginx
+kubectl run nginx1 --image=nginx
+
+- Reviewing log of Pod with One Container
+kubectl logs -f nginx1
+
+- Specifying "-c" switch when One Pod has greater than One Container
+kubectl logs -f nginx1 -c nginx1
+
+- Logs of previously terminated container.
+kubectl logs --previous <podname> -c <containername>
+
+******************************************************
+3. Attach : Hands-on
+- Spin-up Pod with container nginx
+kubectl run nginx1 --image=nginx
+
+- Attach to pod
+kubectl attach nginx1
+
+- Attach to specific container in pod
+kubectl attach nginx1 -c nginx
+
+******************************************************
+4. Execute : Hands-on : 1
+- Spin-up Pod with container nginx
+kubectl run nginx1 --image=nginx
+
+- Execute command inside container
+kubectl exec nginx1 ls
+
+- FAIL: switch -ltr cause issues and fails command
+kubectl exec nginx1 ls -ltrh
+
+- Use "--"
+kubectl exec nginx1 -- ls -ltrh
+
+******************************************************
+5. Execute : Hands-on : 2
+- Interactive shell (No terminal prompt)
+kubectl exec nginx1 -i -- /bin/sh
+
+- Interactive shell (with terminal prompt)
+kubectl exec nginx1 -it -- /bin/sh
+
+- Interactive shell with terminal like output
+kubectl exec nginx1 -it -- ls
+
+- Interactive shell running loop with creating shell and running command using /bin/bash -c 'commands'
+kubectl exec nginx1 -it -- /bin/bash -c 'for i in {1..3}; do echo $i; done'

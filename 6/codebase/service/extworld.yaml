@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: extworld
+spec:
+  ports:
+  - port: 7001
+
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: extworld
+subsets:
+  - addresses:
+    - ip: 35.236.9.31
+    ports:
+    - port: 7001   

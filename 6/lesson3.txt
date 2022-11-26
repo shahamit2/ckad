@@ -1,0 +1,141 @@
+Index: -
+1. Objective
+2. Cleanup
+3. Ingress - Build Images
+4. Ingress - Deploy Pods and Service
+5. About Ingress
+6. Ingress controller
+7. Ingress creation
+
+******************************************************
+1. Objective
+- Learn to use k8s services - Part 3
+
+******************************************************
+2. Cleanup
+- Run below command.
+vagrant ssh kbs1
+kubectl delete all --all -n default
+
+******************************************************
+3. Ingress - Build Images
+- Review all files inside ingress folder.
+
+- Build docker images
+cd codebase/images/world
+docker build . -t amitshah/world
+cd codebase/images/heaven
+docker build . -t amitshah/heaven
+cd codebase/images/hell
+docker build . -t amitshah/hell
+
+- Push docker image
+docker push amitshah/hell
+docker push amitshah/heaven
+docker push amitshah/world
+
+******************************************************
+4. Ingress - Deploy Pods and Service
+
+- Run below commands to create Pods
+vagrant ssh kbs1
+cd codebase/pod/
+kubectl apply -f universe.yaml
+
+- Run below commands to create services
+cd codebase/service
+kubectl apply -f iuniverse.yaml
+
+******************************************************
+5. About Ingress
+- Ingress provides functionality
+  - Name based URL
+  - Path based URL
+  - Load Balancing
+  - SSL Termination
+- API Object like any other object i.e. pod, service, etc
+- Flow
+  - Enduser -> URL:Port -> ServiceIP:Port -> PodIP:Container-Port
+
+******************************************************
+6. Ingress controller
+- About ingress controller
+  - Evaluate all the rules for Ingress object.
+  - Manage redirections.
+  - Ingress can look in all namespaces for rules.
+- Setup
+  - URL: https://kubernetes.github.io/ingress-nginx/deploy/
+- Run below command on kbs1
+vagrant ssh kbs1
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.4/deploy/static/provider/baremetal/deploy.yaml
+kubectl get ns
+kubectl get all -n ingress-nginx
+
+- Wait for 3 minutes before proceeding further.
+
+******************************************************
+7. Ingress creation
+- Fairly complicated
+- Help: A good way to start learning
+kubectl create ingress -h
+kubectl explain ingress.spec.rules.http.paths.backend
+
+- Review yamls in codebase/ingress/*.yaml
+
+- Create Ingress class and object
+vagrant ssh kbs1
+kubectl apply -f codebase/ingress/ingclass.yaml
+kubectl apply -f codebase/ingress/kbs.yaml
+# Wait for few minutes for address to get populated.
+kubectl get ingress
+- ^ Note the IP address.
+
+- Set hostname as below example with IP address noted above.
+vagrant ssh kbs1
+sudo vi /etc/hosts
+172.16.1.5 kbs.com
+
+- Note NodePort of ingress-nginx-controller
+kubectl get svc -n ingress-nginx
+
+- CURL host+path base URL as below.
+vagrant ssh kbs1
+curl -XGET kbs.com:<nodeport>
+curl -XGET kbs.com:<nodeport>/heaven
+curl -XGET kbs.com:<nodeport>/hell
+
+******************************************************
+*) Ruff
+
+minikube addons enable ingress
+minikube tunnel
+https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+
+https://kubernetes.io/docs/concepts/services-networking/ingress/
+https://kubernetes.github.io/ingress-nginx/#faq-migration-to-apiversion-networkingk8siov1
+https://kubernetes.github.io/ingress-nginx/#getting-started
+https://docs.nginx.com/nginx-ingress-controller/intro/how-nginx-ingress-controller-works/
+https://kubernetes.github.io/ingress-nginx/user-guide/basic-usage/
+https://kubernetes.github.io/ingress-nginx/
+
+#!/bin/sh
+echo "Flushing iptables rules..."
+sleep 1
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+- Scale deployment
+kubectl autoscale deployment my-dep --min=5 --max=10
+
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+
+https://www.katacoda.com/courses/kubernetes/playground
+https://labs.play-with-k8s.com/

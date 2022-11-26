@@ -1,0 +1,35 @@
+Vagrant.configure("2") do |config|
+  config.vm.define "kbs1" do |kbs|
+    kbs.vm.box = "bento/ubuntu-20.04"
+    kbs.vm.hostname = "kbs1"
+    kbs.vm.network "private_network", ip: "172.16.1.4"
+    kbs.vm.provision "shell", path: "install-container-runtime.sh", privileged: false
+    kbs.vm.provision "shell", path: "install-k8s-components.sh", privileged: false
+    kbs.vm.provider "kbs1" do |v|
+      v.memory = 2048
+      v.cpu = 2
+    end
+  end
+  config.vm.define "kbs2" do |kbs|
+    kbs.vm.box = "bento/ubuntu-20.04"
+    kbs.vm.hostname = "kbs2"
+    kbs.vm.network "private_network", ip: "172.16.1.5"
+    kbs.vm.provision "shell", path: "install-container-runtime.sh", privileged: false
+    kbs.vm.provision "shell", path: "install-k8s-components.sh", privileged: false
+    kbs.vm.provider "kbs2" do |v|
+      v.memory = 2048
+      v.cpu = 2
+    end
+  end
+  config.vm.define "kbs3" do |kbs|
+    kbs.vm.box = "bento/ubuntu-20.04"
+    kbs.vm.hostname = "kbs3"
+    kbs.vm.network "private_network", ip: "172.16.1.6"
+    kbs.vm.provision "shell", path: "install-container-runtime.sh", privileged: false
+    kbs.vm.provision "shell", path: "install-k8s-components.sh", privileged: false
+    kbs.vm.provider "kbs3" do |v|
+      v.memory = 2048
+      v.cpu = 2
+    end
+  end
+end

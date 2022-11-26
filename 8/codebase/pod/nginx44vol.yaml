@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: nginx44vol
+  name: nginx44vol
+spec:
+  containers:
+  - image: nginx
+    name: nginx
+    volumeMounts:
+    - name: mysec
+      mountPath: /etc/secret
+  volumes:
+  - name: mysec
+    secret:
+      secretName: dbsec4
+      items:
+      - key: master
+        path: db
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never

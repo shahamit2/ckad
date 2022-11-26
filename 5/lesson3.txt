@@ -1,0 +1,126 @@
+Index: -
+1. Objective
+2. Resources Requests and Limits
+3. Assurance of Resources
+4. Quality of Service - Single Container
+5. Quality of Service - Mulitple Containers
+6. Quality of Service : Hands-on
+7. Resource Quota
+8. Resource Quota : Hands-on
+9. Exceed Quota Scenario
+
+
+******************************************************
+1. Objective
+- Below topics are covered.
+  - Resources Requests and Limits
+  - Quality of Service
+  - Resource Quota
+
+******************************************************
+2. Resources Requests and Limits
+- Specific amount of CPU/Memory assignment to containers can be done.
+- There are two fields in Containers definition to specify that.
+  - Requests
+    - Minimum amount of compute resources required.
+  - Limits
+    - Maximum amount of compute resources allowed.
+- Help
+ - kubectl explain pods.spec.containers.resources.requests
+ - kubectl explain deployment.spec.template.spec.containers.resources
+
+******************************************************
+3. Assurance of Resources
+- K8S checks for parameters "requests" and "limits" in Container definition.
+- Based on values of parameters it assures quality of service.
+
+******************************************************
+4. Quality of Service - Single Container
+- Guaranteed
+  - Container has both requests and limits specified.
+    - requsts == limits
+    - K8S guarantees to allocate requested resources.
+    - Guaranteed not to kill container until they exceed limits.
+    - Pod with this type of container is top priority.
+- Burstable
+  - Container has either requests or limits but only one of them specified.
+    - requests = <something> OR limits = <something>
+    - requests
+      - Under memory pressure more likely to killed if they exceed requests.
+      - They are killed if no BestEfforts Pod exists
+- BestEfforts
+  - No requests or limits specified.
+  - Lowest priority
+  - When system run out of memory, these are first to get killed.
+
+******************************************************
+5. Quality of Service - Mulitple Containers
+- Guaranteed
+  - All Containers has both requests and limits specified.
+- Burstable
+  - Example case1
+    - Out of 2 containers
+      - 1st container has requests or limits specified
+      - 2nd container has no requests or limits specified.
+  - Example case2
+    - Out of 2 containers
+      - 1st container has requests or limits specified
+      - 2nd container has both specified.
+- BestEfforts
+  - No requests or limits specified for both containers
+
+******************************************************
+6. Quality of Service : Hands-on
+- Review below files
+  - codebase/pod/qos1.yaml
+  - codebase/pod/qos2.yaml
+  - codebase/pod/qos3.yaml
+- Run below commands
+vagrant ssh kbs1
+kubectl apply -f codebase/pod/qos1.yaml
+kubectl apply -f codebase/pod/qos2.yaml
+kubectl apply -f codebase/pod/qos3.yaml
+kubectl describe pods qos1 | grep QoS
+kubectl describe pods qos2 | grep QoS
+kubectl describe pods qos3 | grep QoS
+
+******************************************************
+7. Resource Quota
+- Restricts amount of resources namespace can use.
+  - Count of Object Type
+    - 10 Pods, 5 Services, 2 Secrets, 10 PVC, 1 Resource Quota etc
+  - Total Memory (1G)
+  - Total CPU (1)
+- Note
+  - Little is covered for CKAD.
+
+******************************************************
+8. Resource Quota : Hands-on
+- Run below command to create NS
+kubectl create namespace quotatest
+
+- Create Quota for NS
+kubectl create quota objcount --hard=cpu=0.5,memory=50Mi,pods=2 --namespace=quotatest
+
+******************************************************
+9. Exceed Quota Scenario
+- Run below command to deploy and exceed quota (replica set to 3)
+kubectl create deployment dep-exceed --image=nginx \
+  --replicas=3 --namespace=quotatest \
+  --dry-run=client -o yaml > codebase/deployment/dep-exceed.yaml
+# Edit dep-exceed.yaml as it's compulsary now to specify cpu and memory
+# Add cpu and memory in dep-exceed.yaml
+
+- Review file codebase/deployment/dep-exceed.yaml
+- Run below command
+kubectl apply -f codebase/deployment/dep-exceed.yaml
+# ^Pod quota is set to 2 and Replicas is set to 3.
+# ^This should only spinup 2 pods
+kubectl get deployment dep-exceed -n quotatest
+kubectl get rs -n quotatest
+kubectl describe rs dep-exceed-7f64b4f984 -n quotatest
+# ^It will show failure message for one pod.
+
+- Cleanup
+kubectl delete deploy dep-exceed -n quotatest
+

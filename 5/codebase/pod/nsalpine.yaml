@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nsalpine
+  namespace: default
+  labels:
+    app: nsalpine
+spec:
+  containers:
+  - name: nsalpine
+    image: alpine
+    command:
+    - "sleep"
+    args:
+    - "360"
+  tolerations:
+  - effect: "NoSchedule"
+    key: "alpine"
+    operator: "Exists"

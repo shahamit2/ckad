@@ -1,0 +1,164 @@
+Index: -
+1. Objective
+2. Prerequisite
+3. Install Virtualbox
+4. Install Vagrant
+5. Create cluster master-workers
+6. Setup master
+7. Note output of "kubeadm init"
+8. Execute commands on master
+9. Network setup on master
+10. Setup worker
+11. Suspend cluster
+12. Restart suspended cluster
+
+******************************************************
+1. Objective
+- Install K8S cluster locally.
+
+******************************************************
+2. Prerequisite
+- Laptop with 12-16GB RAM for 3 nodes cluster
+  - No change is required in localcluster/Vagrantfile
+- Laptop with 8-12GB RAM for 2 nodes cluster
+  - Remove block of kbs3 from localcluster/Vagrantfile
+
+******************************************************
+3. Install Virtualbox
+- Please follow URL for your respective OS to install Virtualbox.
+  - https://www.virtualbox.org/wiki/Downloads
+
+******************************************************
+4. Install Vagrant
+- Please follow URL for your respective OS to install Vagrant.
+  - https://www.vagrantup.com/docs/installation
+
+******************************************************
+5. Create cluster master-workers
+# Run below command from command prompt.
+cd localcluster
+vagrant up
+# Wait for 15-30minutes for machines to get created.
+
+******************************************************
+6. Setup master
+# Run below command on command prompt
+cd localcluster
+vagrant ssh kbs1
+
+# Inside kbs1 run below command
+sudo swapoff -a
+sudo kubeadm init --apiserver-advertise-address 172.16.1.4 --pod-network-cidr 192.168.0.0/16 --ignore-preflight-errors=Mem
+
+******************************************************
+7. Note output of "kubeadm init"
+- Please note output of "sudo kubeadm init" in master-info.txt
+
+******************************************************
+8. Execute commands on master
+# Run below command on command prompt
+cd localcluster
+vagrant ssh kbs1
+
+# Setup config
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+# Execute below commands
+kubectl get nodes
+service kubelet status
+
+******************************************************
+9. Network setup on master
+
+# Run below command on command prompt
+cd localcluster
+vagrant ssh kbs1
+
+# Execute below commands from kbs1 to setup
+wget "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')" -O weave.yaml
+kubectl apply -f weave.yaml
+
+# Wait for 3 minutes and then run below command.
+kubectl get nodes
+
+# ^ Above command should show master is "Ready"
+
+******************************************************
+10. Setup worker
+# Run below command on command prompt
+cd localcluster
+vagrant ssh kbs1
+
+# Run cat command to read kubeadm join from master-info.txt
+cat master-info.txt
+
+# Run below command on command prompt to login to worker
+cd localcluster
+vagrant ssh kbs2
+
+# Run kubeadm join command read from master-info.txt
+# MOST IMPORTANT -- run as sudo
+- Example
+sudo swapoff -a
+sudo kubeadm join 172.16.1.4:6443 --token cjszkv.lhj93muf1a01q2ms \
+	--discovery-token-ca-cert-hash sha256:57bacf3934761a6197a024c9fe9f5cf8f80763b129502599ff2b8be068d6670e
+
+# Wait for 5 minutes then run below commands.
+# All nodes should come in ready state.
+cd localcluster
+vagrant ssh kbs1
+kubectl get nodes
+
+# Follow same steps for kbs3.
+
+******************************************************
+11. Suspend cluster
+# Run below command on command prompt
+cd localcluster
+vagrant suspend
+
+******************************************************
+12. Restart suspended cluster
+# Run below command on command prompt
+cd localcluster
+vagrant up
+
+
+******************************************************
+*) Ruff
+
+###### Do not use #####################################
+# Trial and Error
+#
+# Images
+# ubuntu/impish64
+# bento/ubuntu-20.04
+#
+# Flannel
+# sudo kubeadm init --ignore-preflight-errors=Mem --pod-network-cidr=10.244.0.0/16
+# wget "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml" -O flannel.yaml
+# kubectl apply -f flannel.yaml
+#
+# Different init commands
+# sudo kubeadm init --ignore-preflight-errors=Mem
+# sudo kubeadm init --ignore-preflight-errors=Mem --pod-network-cidr=10.244.0.0/16
+
+# Internal IP Update
+# https://stackoverflow.com/questions/36210856/vagrant-cant-assign-static-ip-to-box
+# sudo apt install net-tools
+# sudo netplan --debug generate
+# sudo netplan apply
+#
+#
+# Server
+# /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+# Environment="KUBELET_EXTRA_ARGS=--node-ip=172.16.1.4"
+# systemctl daemon-reload && service kubelet restart
+
+# Client
+# /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+# Environment="KUBELET_EXTRA_ARGS=--node-ip=172.16.1.5"
+# systemctl daemon-reload && service kubelet restart
+#######################################################

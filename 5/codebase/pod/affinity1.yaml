@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: affinity1
+  labels:
+    app: affinity1
+spec:
+  containers:
+  - name: affinity1
+    image: alpine
+    imagePullPolicy: IfNotPresent
+    command:
+    - "sleep"
+    args:
+    - "360"
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+         nodeSelectorTerms:
+           - matchExpressions:
+             - key: "type"
+               operator: "In"
+               values:
+               - "flexible"
+             - key: "visa"
+               operator: "In"
+               values:
+               - "all"
+
+

@@ -1,0 +1,128 @@
+Index: -
+1. Objective
+2. Why Kubernetes?
+3. About K8S
+4. About K8S Worker
+5. About K8S Master
+6. About Container Runtime
+7. About K8S Objects
+8. Common Processes/Pods on Worker/Master
+9. Control Plane
+10. Cluster Options
+
+******************************************************
+1. Objective
+- Lear K8S Architecture and cluster options.
+
+******************************************************
+2. Why Kubernetes?
+- From monolith to microservices
+  - Application supporting millions of users with thoushands of containers.
+  - Managing 100/1000 containers with script is complex.
+- What to manage
+  - Environment specific config for containers
+  - Secret management for containers
+  - Communication between containers
+  - Routing outside traffic(path based) to containers
+  - Handling crash of containers
+  - Handling up/down of containers based on load
+  - Variety of volume types for persistance storage
+  - Reliable and Scalable setup for container base app
+  - Disaster Recovery: Backup/Restore
+
+******************************************************
+3. About K8S
+- Developed by Google
+- Open source container orchestration tool
+  - k8s is a tool for running a bunch of different containers.
+  - Give it config for containers and communication between them.
+- It has solution for all above scenarios
+- K8S cluster
+  - Self managed, self healing and automated.
+  - Consists of Master(s) and Worker(s) nodes.
+
+******************************************************
+4. About K8S Worker
+- Worker executes real task e.g. running container application.
+- It accepts assistance request from master and accordingly perform actions.
+
+******************************************************
+5. About K8S Master
+- Master is also known as Control Plane.
+- Authorizes end user.
+- Request assistance from worker for executing end user request.
+
+******************************************************
+6. About Container Runtime
+- Container runtime process is required to spin up/down containers.
+- It manages life cycle of containers.
+- K8S support multiple runtime.
+  - containerd
+  - cri-o
+- Note
+  - Docker is much more than just container runtime.
+    - It comes with Volume, Network, Build images, etc.
+
+******************************************************
+7. About K8S Objects
+- K8S comes up with several objects.
+- Each object has specific purpose and use.
+- Few important objects
+  - Pod: Abstraction of container
+  - Service: Communication
+  - Ingress: Route traffic into cluster
+  - ConfigMap: External Configuration
+  - Secrets: External Configuration
+  - Volume: Data Persistence
+  - Deployment: Application Replica
+  - Statefulset: Stateful application replica e.g. Database
+  - Daemon Set: Per node starts 1. e.g. kubeproxy
+
+******************************************************
+8. Common Processes/Pods on Worker/Master
+- Below linux processes run on each worker/master.
+  - Container Runtime
+  - Kubelet
+    - Kubelet schedules request on worker/master
+- Below Pod runs on each worker/master
+  - Kubeproxy
+    - Network component
+    - Responsible for communication between containers.
+    - Responsible for forwarding outside request to containers.
+
+******************************************************
+9. Control Plane
+- K8S master has four important Pods.
+- These Pods are core of K8S cluster.
+- Four Pods
+  - API Server
+  - Scheduler
+  - Controller Manager
+  - Etcd
+- API Server
+  - Entrypoint: Only way to talk to K8S cluster.
+  - Medium: UI, CLI, Rest-API
+- Scheduler
+  - When it should happen?
+  - Talks to API for forwarding scheduling request to worker kubelet.
+- Controller Manager
+  - Where it should happen?
+  - Reads Etcd.
+  - Communicates to Scheduler for Scheduling.
+    - Object in trouble, restart.
+- Etcd
+  - Database
+  - State of object is store inside DB.
+
+
+******************************************************
+10. Cluster Options
+- Managed K8S Service
+  - Examples
+    - GKE(Google K8S Engine)
+    - AKS(Azure K8S Service)
+    - EKS(Amazon Elastic K8S Service)
+- Self managed K8S cluster
+  - More control and flexibility
+- Minikube
+

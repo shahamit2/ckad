@@ -1,0 +1,128 @@
+Index: -
+1. Objective
+2. About YAML files
+3. Why YAML files
+4. Generate YAML
+5. Field/Key details
+6. Available datatypes
+7. Interpret datatypes
+8. Findout APIVersion
+9. Imperative with YAML
+
+******************************************************
+1. Objective
+- Learn about
+  - YAML files
+  - Fields and datatypes of k8s object
+
+******************************************************
+2. About YAML files
+- YAML is Yet another markup language.
+- It's basically key-value pair.
+- Key can have another key-value pair.
+- Example
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+spec:
+  replicas: 2
+  selector:
+  template:
+    metadata:
+    spec:
+
+******************************************************
+3. Why YAML files
+- Providing many options in command line is complex.
+- It would be easier to provide options in file.
+- YAML files can be check-in into repositories.
+
+******************************************************
+4. Generate YAML
+- To generate us switch "--dry-run=client" along with "-o yaml"
+- Run below command to generate YAML
+kubectl create deployment dep-nginx \
+    --image=nginx \
+    --replicas=2 \
+    --dry-run=client \
+    -o yaml > codebase/deployment/dep-nginx.yaml
+
+- Review file codebase/deployment/dep-nginx.yaml
+
+******************************************************
+5. Field/Key details
+- Most important aspect is to find out
+  - Name of fields
+  - Type of value for that fields
+  - Whether it is mandatory or non-mandatory
+- K8S provide solid help for both i.e. name of field and type
+
+- Use below commands to get info
+kubectl explain deployment
+kubectl explain deployment.metadata.annotations
+kubectl explain deployment.metadata.name
+
+- Most important switch is "recursive"
+kubectl explain pods.spec.containers --recursive
+
+- For identifying mandatory fields use grep
+kubectl explain pod.spec.volumes | grep -i required
+
+******************************************************
+6. Available datatypes
+- May not be complete list.
+- Primitive
+  - integer
+  - boolean
+  - string
+  - map[<type>]<type>
+    - map[string][string]
+- Reference
+  - Object
+  - []Object
+
+******************************************************
+7. Interpret datatypes
+- Primitive then value needs to be decided.
+  - kubectl explain deployment.metadata.name
+- Primitive Map then key/value pair to be supplied.
+  - kubectl explain deployment.metadata.annotations
+- Reference then go one step further to find out field
+  till primitive encountered.
+  - Good news is keys are given.
+  - kubectl explain pod.spec.volumes
+  - kubectl explain pod.spec.volumes.secret
+
+- Out of the box List([]object) example
+containers:
+ - name: "bb"
+   image: "busybox"
+ - name: "nginx"
+   image: "nginx"
+
+- Out of the box Map example
+kubectl explain pod.spec.containers.resources
+  - o/p: limits	<map[string]string>
+  - For resources key/value both needs to be supplied
+    - memory: "100Mi"
+
+******************************************************
+8. Findout APIVersion
+- Using kubectl explain
+kubectl explain pod | head -2
+kubectl explain deployment | head -2
+
+- K8S Documentation
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#api-versions
+
+******************************************************
+9. Imperative with YAML
+- Imperative command can be used with YAML file as well.
+
+- Run below command to create
+kubectl create -f codebase/deployment/dep-nginx.yaml
+kubectl get deploy dep-nginx -o wide
+
+- Run below command to delete
+kubectl delete -f codebase/deployment/dep-nginx.yaml
+kubectl get deploy -o wide
